@@ -411,8 +411,14 @@ function buildFollowUp(d: AlertData): string {
     "Destination Port", get("dstport"), "",
     "Please confirm if this communication is expected and authorized for your systems as it is associated with a malicious IP. Thank you."
   ]);
-  } else if (alertKey.includes("scanner reputation")) {
-    body = lines(["Source IP", `${get("srcip_host", "host_ip", "IP/name", "ip")} (Malicious)`, "", "Please verify the source IP if related to your operations, as it was flagged malicious by security vendors. Thank you!"]);
+ } else if (alertKey.includes("scanner reputation")) {
+    body = lines([
+      "Source IP", `${get("srcip_host", "host_ip", "IP/name", "ip")} (Malicious)`, "",
+      "Source Country", getGeo("srcip"), "",
+      "Event Source", get("event_source"), "",
+      "action", get("action"), "",
+      "Please verify the source IP if related to your operations, as it was flagged malicious by security vendors. Thank you!"
+    ]);
   } else if (alertKey.includes("sensitive windows active directory") || alertKey.includes("active directory attribute")) {
     body = lines(["Host IP", get("srcip_host"), "", "Host Name", get("engid_name", "device_name"), "", "Event Outcome", get("event_outcome", "state"), "", "Please confirm whether this Active Directory attribute modification was an authorized and expected activity. Thank you."]);
   } else if (alertKey.includes("sensor status")) {
