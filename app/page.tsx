@@ -290,8 +290,18 @@ function buildFollowUp(d: AlertData): string {
   } else if (alertKey.includes("exploited c") || alertKey.includes("c&c")) {
     body = lines(["Source IP", `${get("srcip_host")} (Malicious)`, "", "Source Host", get("srcip_host"), "", "Source Port", get("srcport"), "", "Destination IP", get("dstip_host", "dstip"), "", "Destination Host", get("dstip_host", "dstip"), "", "Destination Port", get("dstport"), "", "Please confirm if this communication is expected and authorized for your systems. Thank you."]);
   } else if (alertKey.includes("external account login failure")) {
-    body = lines(["Source Username", get("srcip_username"), "", "Source User ID", get("srcip_usersid"), "", "Source IP", get("srcip_host"), "", "Login Type", get("login_type", "proto_name"), "", "Total Number Failed", get("actual", "count"), "", "Please confirm if these login attempts are expected or part of any authorized activity?"]);
-  } else if (alertKey.includes("external firewall denial")) {
+    const totalFailed = getNested("event_summary.total_failed") !== "N/A"
+      ? getNested("event_summary.total_failed")
+      : get("actual", "count");
+
+    body = lines([
+      "Source Username", get("srcip_username"), "",
+      "Source User ID", get("srcip_usersid"), "",
+      "Source IP", get("srcip_host"), "",
+      "Login Type", get("login_type", "proto_name"), "",
+      "Total Number Failed", totalFailed, "",
+      "Please confirm if these login attempts are expected or part of any authorized activity?"
+    ]);
     body = lines(["Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Action", get("action"), "", "Please verify the source IP if related to your operations, Thank you!"]);
   } else if (alertKey.includes("external handshake failure")) {
     body = lines(["Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Please confirm if this connection attempt is expected, or if any of this source IP should not be communicating with your public servers."]);
