@@ -303,8 +303,27 @@ function buildFollowUp(d: AlertData): string {
     const src = get("srcip_host"), dst = get("dstip_host", "dstip");
     body = lines(["Source Host", src, "", "Destination IP", dst, "", "IDS Action", get("action", "ids_action"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", `Unusual traffic detected from ${src} to ${dst}. Please confirm that the external scanning activity is expected and part of your operations right now. Thank you!`]);
   } else if (alertKey.includes("external user login failure")) {
-    const srcIp = get("srcip_host");
-    body = lines(["Source IP", srcIp, "", "Total Fail Percentage", get("failure_percent", "actual") !== "N/A" ? `${get("failure_percent", "actual")}%` : "N/A", "", `Kindly confirm whether the repeated VPN login failures from external IP ${srcIp} (Fortinet FortiGate) are expected or unauthorized.`]);
+    const srcIp = get("srcip_host", "IP/name", "ip");
+    const dstIp = get("dstip_host", "dstip");
+    const rawFail = getNested("event_summary.total_fail_ratio") !== "N/A"
+  ? getNested("event_summary.total_fail_ratio")
+  : get("percent_failed", "failure_percent", "actual");
+   const failPct = rawFail !== "N/A"
+  ? (() => {
+      const val = parseFloat(rawFail) * 100;
+      return val === 100 ? "100%" : `${val.toFixed(2)}%`;
+    })()
+  : "N/A";
+
+    body = lines([
+      "Source IP", srcIp, "",
+      "Destination IP", dstIp, "",
+      "Destination Host", dstIp, "",
+      "Total Fail Percentage", failPct, "",
+      "Destination Port", get("dstport"), "",
+      "Source Port", get("srcport"), "",
+      `Please confirm if this repeated failed VPN authentication activity from the external source IP to the destination IP on port ${get("dstport")} is expected or authorized on your end. Thank you!`
+    ]);
   } else if (alertKey.includes("impossible travel")) {
     body = lines(["Source User ID", get("srcip_usersid", "user_id"), "", "Source IP", get("srcip_host"), "", "Source IP 2", get("srcip2", "src_ip2"), "", "Source Country", getGeo("srcip"), "", "Distance Deviation (Miles)", get("distance_deviation", "dist_deviation"), "", "The following source IP for this specific alert is not on the whitelisted list. May we confirm if this activity is expected on your end?"]);
   } else if (alertKey.includes("internal credential stuffing")) {
