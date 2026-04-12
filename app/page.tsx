@@ -239,6 +239,16 @@ function buildFollowUp(d: AlertData): string {
     return "N/A";
   };
 
+    const getNested = (path: string): string => {
+    const keys = path.split(".");
+    let val: unknown = obj;
+    for (const k of keys) {
+      if (val && typeof val === "object") val = (val as Record<string, unknown>)[k];
+      else return "N/A";
+    }
+    return val !== undefined && val !== null && String(val).trim() !== "" ? String(val) : "N/A";
+  };
+
   const getGeo = (prefix: string): string => {
     const geo = obj[`${prefix}_geo`] as Record<string, unknown> | undefined;
     return (geo?.countryName as string) ?? "N/A";
@@ -346,9 +356,32 @@ function buildFollowUp(d: AlertData): string {
   } else if (alertKey.includes("outbytes anomaly")) {
     body = lines(["Source IP", get("srcip_host"), "", "Destination Host", get("dstip_host"), "", "Actual", get("actual"), "", "Typical", get("typical"), "", "Please verify if this outbound data transfer is part of your operations as of this moment or not. Thank you!"]);
   } else if (alertKey.includes("private to public exploit")) {
-    body = lines(["IDS Signature", get("ids_signature", "ids_name"), "", "Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "Please confirm if this communication is expected and authorized for your systems."]);
-  } else if (alertKey.includes("public to private exploit")) {
-    body = lines(["IDS Signature", get("ids_signature", "ids_name"), "", "Source IP", `${get("srcip_host")} (malicious)`, "", "Destination Host", get("dstip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "Please confirm if this communication is expected and authorized for your systems as it is associated with a malicious IP. Thank you."]);
+    const idsSignature = get("ids_signature", "ids_name") !== "N/A"
+      ? get("ids_signature", "ids_name")
+      : getNested("ids.signature");
+
+    body = lines(["IDS Signature", idsSignature, "", "Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "Please confirm if this communication is expected and authorized for your systems."]);
+ } else if (alertKey.includes("public to private exploit")) {
+  const idsSignature = get("ids_signature", "ids_name") !== "N/A"
+    ? get("ids_signature", "ids_name")
+    : getNested("ids.signature");
+
+  const dstHost = get("dstip_host");
+  const dstIp   = get("dstip");
+  const dstLine = dstHost !== "N/A" && dstIp !== "N/A" && dstHost !== dstIp
+    ? lines(["Destination Host", dstHost, "", "Destination IP", dstIp])
+    : dstHost !== "N/A"
+    ? lines(["Destination Host", dstHost])
+    : lines(["Destination IP", dstIp]);
+
+  body = lines([
+    "IDS Signature", idsSignature, "",
+    "Source IP", `${get("srcip_host")} (malicious)`, "",
+    dstLine, "",
+    "Source Port", get("srcport"), "",
+    "Destination Port", get("dstport"), "",
+    "Please confirm if this communication is expected and authorized for your systems as it is associated with a malicious IP. Thank you."
+  ]);
   } else if (alertKey.includes("scanner reputation")) {
     body = lines(["Source IP", `${get("srcip_host", "host_ip", "IP/name", "ip")} (Malicious)`, "", "Please verify the source IP if related to your operations, as it was flagged malicious by security vendors. Thank you!"]);
   } else if (alertKey.includes("sensitive windows active directory") || alertKey.includes("active directory attribute")) {
@@ -365,9 +398,12 @@ function buildFollowUp(d: AlertData): string {
     body = lines(["Source Host", get("srcip_host"), "", "Target Username", get("srcip_username", "target_username"), "", "Service Name", get("service_name", "event_data_servicename"), "", "We observed a Kerberos service ticket request — can you confirm this activity is expected and authorized?"]);
   } else if (alertKey.includes("user login location")) {
     body = lines(["Source Username", get("srcip_username"), "", "Source IP", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "Login Result", get("login_result", "action"), "", "Please confirm if this login from an unusual location is expected and authorized. Thank you."]);
+  } else if (alertKey.includes("long app session")) {
+    body = lines(["Source IP", get("srcip"), "", "Destination IP", get("dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "App", get("appid_name", "proto_name"), "", "Please confirm if this activity is done in your end, thank you"]);
   } else {
     body = lines(["Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "Action", get("action"), "", "Please confirm if this activity is expected and authorized on your end. Thank you."]);
   }
+
 
   return `${header}\n${body}`;
 }
@@ -590,11 +626,23 @@ export default function AlertAnalyzer() {
       ? (data.dstip_host ?? data.dstip ?? null)
       : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
 
-    if (ip) {
-      setVtIp(ip); setVtResult(null); setVtLoading(true); setShowAegis(false);
-      fetch(`/api/virustotal?ip=${encodeURIComponent(ip)}`)
+    const isPrivateOrHostname = (val: string) =>
+  /^10\./i.test(val) ||
+  /^172\.(1[6-9]|2\d|3[01])\./i.test(val) ||
+  /^192\.168\./i.test(val) ||
+  /^127\./i.test(val) ||
+  !/^\d{1,3}(\.\d{1,3}){3}$/.test(val); // not a plain IPv4
+
+if (ip && !isPrivateOrHostname(ip)) {
+  setVtIp(ip); setVtResult(null); setVtLoading(true); setShowAegis(false);
+  fetch(`/api/virustotal?ip=${encodeURIComponent(ip)}`)
         .then(r => r.json())
         .then((vt: VTResult) => {
+
+            if (vt.error && typeof vt.error !== "string") {
+    vt.error = String(vt.error);
+  }
+
           setVtResult(vt);
           setVtLoading(false);
           applyPreset(vt, analysis.verdict);

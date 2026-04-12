@@ -20,8 +20,9 @@ export async function GET(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const err = await res.json();
-      return NextResponse.json({ error: err }, { status: res.status });
+    const err = await res.json();
+    const message = err?.error?.message ?? err?.error ?? `VT API error (${res.status})`;
+    return NextResponse.json({ error: String(message) }, { status: res.status });
     }
 
     const data = await res.json();
