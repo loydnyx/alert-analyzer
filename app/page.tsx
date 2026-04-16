@@ -271,14 +271,15 @@ function buildFollowUp(d: AlertData): string {
   const header = lines([
     displayName, "",
     description, "",
-    "Below are the other details for this alert.", "",
+    "Here are the other details regarding this alert.", "",
     timestamp, "",
   ]);
 
   let body = "";
 
   if (alertKey.includes("application usage")) {
-    body = lines(["App", get("appid_name"), "", "App ID", get("appid"), "", "Actual", get("actual"), "", "Threshold", get("threshold", "typical"), "", "Source Host", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "Destination Host", get("dstip_host"), "", "Please verify if the app is part of your operations. Thank you."]);
+    const threshold = get("threshold") !== "N/A" ? get("threshold") : getNested("stellar.threshold") !== "N/A" ? getNested("stellar.threshold") : get("typical");
+    body = lines(["App", get("appid_name"), "", "App ID", get("appid"), "", "Actual", get("actual"), "", "Threshold", threshold, "", "Source Host", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "Destination Host", get("dstip_host"), "", "Please verify if the app is part of your operations. Thank you."]);
   } else if (alertKey.includes("bad source reputation")) {
     body = lines(["Source IP", get("srcip_host"), "", "Action", get("action"), "", "Destination IP", get("dstip_host", "dstip"), "", "Could you please confirm if this is a recognized malicious source IP within your network or used by your team? Thank you."]);
   } else if (alertKey.includes("data ingestion")) {
@@ -313,27 +314,38 @@ function buildFollowUp(d: AlertData): string {
     const src = get("srcip_host"), dst = get("dstip_host", "dstip");
     body = lines(["Source Host", src, "", "Destination IP", dst, "", "IDS Action", get("action", "ids_action"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", `Unusual traffic detected from ${src} to ${dst}. Please confirm that the external scanning activity is expected and part of your operations right now. Thank you!`]);
   } else if (alertKey.includes("external user login failure")) {
-    const srcIp = get("srcip_host", "IP/name", "ip");
-    const dstIp = get("dstip_host", "dstip");
-    const rawFail = getNested("event_summary.total_fail_ratio") !== "N/A"
-  ? getNested("event_summary.total_fail_ratio")
-  : get("percent_failed", "failure_percent", "actual");
-   const failPct = rawFail !== "N/A"
-  ? (() => {
-      const val = parseFloat(rawFail) * 100;
-      return val === 100 ? "100%" : `${val.toFixed(2)}%`;
-    })()
-  : "N/A";
 
-    body = lines([
-      "Source IP", srcIp, "",
-      "Destination IP", dstIp, "",
-      "Destination Host", dstIp, "",
-      "Total Fail Percentage", failPct, "",
-      "Destination Port", get("dstport"), "",
-      "Source Port", get("srcport"), "",
-      `Please confirm if this repeated failed VPN authentication activity from the external source IP to the destination IP on port ${get("dstport")} is expected or authorized on your end. Thank you!`
-    ]);
+  // ✅ Source IP (proper fallback)
+  const srcIp = get("srcip", "srcip_host", "remote_ip");
+
+  // ✅ Destination values (SEPARATE - para tama kahit same or different)
+  const dstIp = get("dstip");
+  const dstHost = get("dstip_host");
+
+  // ✅ Fail percentage
+  const rawFail =
+    getNested("event_summary.total_fail_ratio") !== "N/A"
+      ? getNested("event_summary.total_fail_ratio")
+      : get("percent_failed", "failure_percent", "actual");
+
+  const failPct =
+    rawFail !== "N/A"
+      ? (() => {
+          const val = parseFloat(rawFail) * 100;
+          return val === 100 ? "100%" : `${val.toFixed(2)}%`;
+        })()
+      : "N/A";
+
+  // ✅ Final body (NO filtering - always show both)
+  body = lines([
+    "Source IP", srcIp, "",
+    "Destination IP", dstIp, "",
+    "Destination Host", dstHost, "",
+    "Total Fail Percentage", failPct, "",
+    "Destination Port", get("dstport"), "",
+    "Source Port", get("srcport"), "",
+    `Please confirm if this repeated failed VPN authentication activity from the external source IP to the destination IP on port ${get("dstport")} is expected or authorized on your end. Thank you!`
+  ]);
   } else if (alertKey.includes("impossible travel")) {
     body = lines(["Source User ID", get("srcip_usersid", "user_id"), "", "Source IP", get("srcip_host"), "", "Source IP 2", get("srcip2", "src_ip2"), "", "Source Country", getGeo("srcip"), "", "Distance Deviation (Miles)", get("distance_deviation", "dist_deviation"), "", "The following source IP for this specific alert is not on the whitelisted list. May we confirm if this activity is expected on your end?"]);
   } else if (alertKey.includes("internal credential stuffing")) {
@@ -363,19 +375,60 @@ function buildFollowUp(d: AlertData): string {
   } else if (alertKey.includes("login attempt location count")) {
     const username = get("srcip_username");
     body = lines(["Source User ID", get("srcip_usersid", "user_id"), "", "Source Username", username, "", "Source IP", get("srcip_host"), "", "Actual Locations", get("actual"), "", "Typical Locations", get("typical"), "", `We detected multiple failed login attempts for the account ${username} originating from several geographically diverse locations within a short period. Please confirm whether these attempts are legitimate. Thank you!`]);
-  } else if (alertKey.includes("login time anomaly")) {
-    const desc = d.xdr_event?.description ?? "";
-    const actualMatch  = desc.match(/abnormal time range\s+([\d:]+[-][\d:]+\s+UTC[+\-][\d:]+)/i);
-    const typicalMatch = desc.match(/typical login time range:\s+([\d:]+[-][\d:]+\s+UTC[+\-][\d:]+)/i);
-    const actualTimeRange  = get("login_time_range", "actual_time_range", "abnormal_time_range", "actual_range") !== "N/A" ? get("login_time_range", "actual_time_range", "abnormal_time_range", "actual_range") : actualMatch ? actualMatch[1] : get("actual");
-    const typicalTimeRange = get("typical_time_range", "typical_login_time_range", "typical_range") !== "N/A" ? get("typical_time_range", "typical_login_time_range", "typical_range") : typicalMatch ? typicalMatch[1] : get("typical");
-    const deviceVal    = get("device_name", "os_type", "device");
-    const deviceObj    = obj.device as Record<string, unknown> | undefined;
-    const office365Obj = obj.office365 as Record<string, unknown> | undefined;
-    const deviceProps  = office365Obj?.device_properties as Record<string, unknown> | undefined;
-    const osFromO365   = deviceProps?.OS as string | undefined;
-    const deviceFinal  = deviceObj?.name as string ?? osFromO365 ?? deviceVal;
-    body = lines(["Source User ID", get("srcip_usersid", "user_id"), "", "Source Username", get("srcip_username"), "", "Source Host", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "Actual Login Time Range", actualTimeRange, "", "Typical Login Time Range", typicalTimeRange, "", "Device", deviceFinal, "", "Login Result", get("login_result", "action"), "", "Please confirm if this login activity is expected and legitimate at this time. Thank you!"]);
+ } else if (alertKey.includes("login time anomaly")) {
+
+  const desc = d.xdr_event?.description ?? "";
+
+  // Extract time ranges
+  const actualMatch  = desc.match(/abnormal time range\s+([\d:]+[-][\d:]+\s+UTC[+\-][\d:]+)/i);
+  const typicalMatch = desc.match(/typical login time range:\s+([\d:]+[-][\d:]+\s+UTC[+\-][\d:]+)/i);
+
+  const actualTimeRange =
+    get("login_time_range", "actual_time_range", "abnormal_time_range", "actual_range") !== "N/A"
+      ? get("login_time_range", "actual_time_range", "abnormal_time_range", "actual_range")
+      : actualMatch ? actualMatch[1] : get("actual");
+
+  const typicalTimeRange =
+    get("typical_time_range", "typical_login_time_range", "typical_range") !== "N/A"
+      ? get("typical_time_range", "typical_login_time_range", "typical_range")
+      : typicalMatch ? typicalMatch[1] : get("typical");
+
+  const sourceHost = get("srcip", "hostip", "srcip_host");
+
+  const srcCountry1 = getGeo("srcip");
+  const srcCountry2 = getGeo("hostip");
+
+  const sourceCountry =
+    srcCountry1 !== "N/A"
+      ? srcCountry1
+      : srcCountry2 !== "N/A"
+      ? srcCountry2
+      : "N/A";
+
+  const deviceVal    = get("device_name", "os_type", "device");
+  const deviceObj    = obj.device as Record<string, unknown> | undefined;
+  const office365Obj = obj.office365 as Record<string, unknown> | undefined;
+  const deviceProps  = office365Obj?.device_properties as Record<string, unknown> | undefined;
+  const osFromO365   = deviceProps?.OS as string | undefined;
+
+  const deviceFinal =
+    (deviceObj?.name as string) ??
+    osFromO365 ??
+    get("engid_name", "agent.computer_name", "device_name");
+
+  const loginResult = get("login_result", "event.outcome", "action");
+
+  body = lines([
+    "Source User ID", get("srcip_usersid", "user_id"), "",
+    "Source Username", get("srcip_username", "username", "user.email"), "",
+    "Source Host", sourceHost, "",
+    "Source Country", sourceCountry, "",
+    "Actual Login Time Range", actualTimeRange, "",
+    "Typical Login Time Range", typicalTimeRange, "",
+    "Device", deviceFinal, "",
+    "Login Result", loginResult, "",
+    "Please confirm if this login activity is expected and legitimate at this time. Thank you!"
+  ]);
   } else if (alertKey.includes("office 365 file sharing")) {
     body = lines(["Source IP", get("srcip_host"), "", "Source Host", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "User ID", get("srcip_username", "user_id"), "", "Shared File", get("file_name", "object_id"), "", "Please verify whether this file-sharing activity was authorized and aligned with current business operations."]);
   } else if (alertKey.includes("office 365 multiple files restored")) {
