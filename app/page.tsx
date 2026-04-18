@@ -309,10 +309,124 @@ function buildFollowUp(d: AlertData): string {
   } else if (alertKey.includes("external ip") || alertKey.includes("external ip / port scan")) {
     body = lines(["Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "App", get("appid_name", "proto_name"), "", "We detected that your internal host generated multiple failed outbound connection attempts to external IPs across several ports within a short period. This activity triggered a port scan anomaly due to its scanning-like pattern. Please confirm if this behavior is expected on your end. Thank you!"]);
   } else if (alertKey.includes("external pua")) {
-    body = lines(["IDS Signature", get("ids_signature", "ids_name"), "", "Source Host", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Destination Host", get("dstip_host"), "", "IDS Action", get("action", "ids_action"), "", "Could you confirm if this is expected on your end? Thank you."]);
-  } else if (alertKey.includes("external scanner behavior")) {
+    body = lines([
+        "IDS Signature", getNested("ids.signature"),
+        "",
+        "Source Host", get("srcip_host"),
+        "",
+        "Destination IP", get("dstip"),
+        "",
+        "Destination Host", get("dstip_host"),
+        "",
+        "IDS Action", getNested("ids.action"),
+        "",
+        "Could you confirm if this is expected on your end? Thank you."
+    ]);
+
+    } else if (alertKey.includes("internal account login failure")) {
+    body = lines([
+        "Source Username",        get("srcip_username"),
+        "",
+        "Total Number Failed",    getNested("event_summary.total_failed") !== "N/A"
+                                    ? getNested("event_summary.total_failed")
+                                    : get("actual"),
+        "",
+        "Total Number Successful", getNested("event_summary.total_successful") !== "N/A"
+                                    ? getNested("event_summary.total_successful")
+                                    : get("num_successful"),
+        "",
+        "Login Type",             get("login_type"),
+        "",
+        "Source IP",              get("srcip_host"),
+        "",
+        "Please confirm whether these login failure attempts are legitimate or not. Thank you!"
+    ]);
+
+    } else if (alertKey.includes("external firewall policy")) {
+    body = lines([
+        "Source IP",       get("srcip_host"),
+        "",
+        "Source Port",     get("srcport"),
+        "",
+        "Destination IP",  get("dstip_host", "dstip"),
+        "",
+        "Destination Port", get("dstport"),
+        "",
+        "Device Type",     get("dev_type"),
+        "",
+        "Firewall Policy", get("fw_policy_id"),
+        "",
+        "Please verify if this firewall policy activity is part of your operations. Thank you."
+    ]);} else if (alertKey.includes("external firewall policy")) {
+    body = lines([
+        "Source IP",       get("srcip_host"),
+        "",
+        "Source Port",     get("srcport"),
+        "",
+        "Destination IP",  get("dstip_host", "dstip"),
+        "",
+        "Destination Port", get("dstport"),
+        "",
+        "Device Type",     get("dev_type"),
+        "",
+        "Firewall Policy", get("fw_policy_id"),
+        "",
+        "Please verify if this firewall policy activity is part of your operations. Thank you."
+    ]);
+
+    } else if (alertKey.includes("encrypted phishing")) {
+    body = lines([
+        "Source IP",          get("srcip_host"),
+        "",
+        "Destination IP",     get("dstip"),
+        "",
+        "Destination Host",   get("dstip_host"),
+        "",
+        "Destination Country", getGeo("dstip"),
+        "",
+        "Please confirm if this activity is expected or legitimate. If not, we recommend blocking the destination host and avoiding access to this site. Thank you."
+    ]);
+
+    } else if (alertKey.includes("external protocol account login failure")) {
+    const totalFailed = getNested("event_summary.total_failed") !== "N/A"
+        ? getNested("event_summary.total_failed")
+        : get("num_failed", "actual");
+
+    body = lines([
+        "Source IP",           get("srcip_host"),
+        "",
+        "Source Host",         get("srcip_host"),
+        "",
+        "Source Port",         get("srcport"),
+        "",
+        "Destination IP",      get("dstip_host", "dstip"),
+        "",
+        "Destination Host",    get("dstip_host", "dstip"),
+        "",
+        "Destination Port",    get("dstport"),
+        "",
+        `We detected SMB login failures from internal host ${get("srcip_host")} using the account "${get("smb_username", "srcip_username")}" against external IP ${get("dstip_host", "dstip")}. A total of ${totalFailed} failed attempts were observed with no successful authentication.`,
+        "",
+        "Kindly confirm if this SMB access to an external system is authorized. Thank you."
+    ]);
+
+ } else if (alertKey.includes("external scanner behavior")) {
     const src = get("srcip_host"), dst = get("dstip_host", "dstip");
-    body = lines(["Source Host", src, "", "Destination IP", dst, "", "IDS Action", get("action", "ids_action"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", `Unusual traffic detected from ${src} to ${dst}. Please confirm that the external scanning activity is expected and part of your operations right now. Thank you!`]);
+    body = lines([
+        "Source Host",    src,
+        "",
+        "Destination IP", dst,
+        "",
+        "IDS Signature",  getNested("ids.signature"),
+        "",
+        "IDS Action",     getNested("ids.action"),
+        "",
+        "Source Port",    get("srcport"),
+        "",
+        "Destination Port", get("dstport"),
+        "",
+        `Unusual traffic detected from ${src} to ${dst}. Please confirm that the external scanning activity is expected and part of your operations right now. Thank you!`
+    ]);
   } else if (alertKey.includes("external user login failure")) {
 
   // ✅ Source IP (proper fallback)
@@ -361,7 +475,70 @@ function buildFollowUp(d: AlertData): string {
   } else if (alertKey.includes("plain text password")) {
     body = lines(["Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Destination Host", get("dstip_host"), "", "App", get("appid_name", "proto_name"), "", "Destination Port", get("dstport"), "", "Source Port", get("srcport"), "", "Please verify if this detection is expected and confirm whether the activity is legitimate. Thank you."]);
   } else if (alertKey.includes("internal protocol account login fail")) {
-    body = lines(["Account Name", get("srcip_username", "account_name"), "", "Total Number Failed", get("actual", "total_failed"), "", "Total Number Successful", get("total_success", "total_successful"), "", "Login Type", get("login_type", "proto_name"), "", "Source Host", get("srcip_host"), "", "Source IP", get("srcip_host"), "", "Please confirm whether these SMB login failure attempts were initiated by a legitimate user activity or not. Thank you."]);
+    body = lines([
+        "Account Name",           get("smb_username", "srcip_username", "account_name"),
+        "",
+        "Total Number Failed",    getNested("event_summary.total_failed") !== "N/A"
+                                    ? getNested("event_summary.total_failed")
+                                    : get("actual", "num_failed"),
+        "",
+        "Total Number Successful", getNested("event_summary.total_successful") !== "N/A"
+                                    ? getNested("event_summary.total_successful")
+                                    : get("num_successful"),
+        "",
+        "Login Type",             get("login_type", "proto_name"),
+        "",
+        "Source Host",            get("srcip_host"),
+        "",
+        "Source IP",              get("srcip_host"),
+        "",
+        `Please confirm whether these SMB login failure attempts were initiated by a legitimate user activity or not. Thank you.`
+    ]);
+
+    } else if (alertKey.includes("external smb read")) {
+    body = lines([
+        "Source IP",        get("srcip_host"),
+        "",
+        "Destination Host", get("dstip_host", "dstip"),
+        "",
+        "SMB Username",     get("smb_username", "srcip_username", "smb_username_count"),
+        "",
+        "Destination Port", get("dstport"),
+        "",
+        "Even though the said destination host is not detected as malicious, the team would like to confirm this just in case. May we confirm if this activity is expected or part of system operations? Thank you."
+    ]);
+
+    } else if (alertKey.includes("microsoft 365")) {
+    const user = get("srcip_username", "username");
+    body = lines([
+        "Source",            getNested("office365.Source"),
+        "",
+        "Threat Name",       getNested("office365.Name"),
+        "",
+        "Severity",          getNested("office365.Severity"),
+        "",
+        "Alert Entity List", `User: ${user}`,
+        "",
+        "User Name",         user,
+        "",
+        `We observed that a user (${user}) reported an email message as phishing/malware in Microsoft 365 Security & Compliance. Please confirm whether this activity is legitimate. Thank you!`
+    ]);
+
+  } else if (alertKey.includes("internal other malware")) {
+    body = lines([
+        "Source IP",       get("srcip_host"),
+        "",
+        "Destination IP",  get("dstip_host", "dstip"),
+        "",
+        "IDS Signature",   getNested("ids.signature"),
+        "",
+        "Source Port",     get("srcport"),
+        "",
+        "Destination Port", get("dstport"),
+        "",
+        "We detected suspicious internal traffic that matched a known malware IDS signature. Kindly verify the affected endpoint and confirm whether this activity is expected. Thank you!"
+    ]);
+
   } else if (alertKey.includes("internal protocol account login")) {
     body = lines(["Account Name", get("srcip_username", "account_name"), "", "Total Number Failed", get("actual", "total_failed"), "", "Total Number Successful", get("total_success", "total_successful"), "", "Login Type", get("login_type", "proto_name"), "", "Source Host", get("srcip_host"), "", "Source IP", get("srcip_host"), "", "Please confirm whether these SMB login attempts were initiated by a legitimate user activity or not. Thank you."]);
   } else if (alertKey.includes("internal scanner behavior")) {
@@ -430,7 +607,21 @@ function buildFollowUp(d: AlertData): string {
     "Please confirm if this login activity is expected and legitimate at this time. Thank you!"
   ]);
   } else if (alertKey.includes("office 365 file sharing")) {
-    body = lines(["Source IP", get("srcip_host"), "", "Source Host", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "User ID", get("srcip_username", "user_id"), "", "Shared File", get("file_name", "object_id"), "", "Please verify whether this file-sharing activity was authorized and aligned with current business operations."]);
+    body = lines([
+        "Source IP",      get("srcip_host"),
+        "",
+        "Source Host",    get("srcip_host"),
+        "",
+        "Source Country", getGeo("srcip"),
+        "",
+        "User ID",        getNested("office365.UserId"),
+        "",
+        "Shared File",    getNested("office365.SourceFileName"),
+        "",
+        "Object ID",      getNested("office365.ObjectId"),
+        "",
+        "Please verify whether this file-sharing activity was authorized and aligned with current business operations."
+    ]);
   } else if (alertKey.includes("office 365 multiple files restored")) {
     body = lines(["Windows Event Source", get("event_source", "msg_origin"), "", "Source IP", get("srcip_host"), "", "User ID", get("srcip_username"), "", "File Name", get("file_name", "object_id"), "", "Please confirm whether this file restore activity by the user is authorized. Thank you."]);
   } else if (alertKey.includes("outbound destination country")) {
@@ -475,7 +666,62 @@ function buildFollowUp(d: AlertData): string {
   } else if (alertKey.includes("sensitive windows active directory") || alertKey.includes("active directory attribute")) {
     body = lines(["Host IP", get("srcip_host"), "", "Host Name", get("engid_name", "device_name"), "", "Event Outcome", get("event_outcome", "state"), "", "Please confirm whether this Active Directory attribute modification was an authorized and expected activity. Thank you."]);
   } else if (alertKey.includes("sensor status")) {
-    body = lines(["Sensor ID", get("engid", "sensor_id"), "", "Sensor", get("engid_name", "sensor_name"), "", "Please verify if this disconnection is expected to happen at this time. Thank you."]);
+    // ── After-hours expected disconnection logic ──────────────────────────
+    const EXPECTED_AFTER_HOURS: Record<string, number> = {
+      "belmont": 17, // after 5 PM PH time
+      "siycha":   21, // after 9 PM PH time
+    };
+    const NOT_EXPECTED_SENSORS = [
+      "modular",
+      "stellarmodularsensor",
+      "awsmds",
+      "mds",
+    ];
+    const phHour      = (new Date(rawTs ?? Date.now()).getUTCHours() + 8) % 24;
+    const tenantKey   = (d.tenant_name ?? "").toLowerCase();
+    const sensorName  = get("engid_name", "sensor_name");
+    const sensorKey   = sensorName.toLowerCase();
+    const sensorId    = get("engid", "sensor_id");
+
+    const afterHourThreshold = Object.entries(EXPECTED_AFTER_HOURS)
+      .find(([k]) => tenantKey.includes(k))?.[1];
+
+    const isAfterHours    = afterHourThreshold !== undefined && phHour >= afterHourThreshold;
+    const isNeverExpected = NOT_EXPECTED_SENSORS.some(s => sensorKey.includes(s));
+
+    if (isAfterHours && !isNeverExpected) {
+      body = lines([
+        "Sensor ID",  sensorId,
+        "",
+        "Sensor",     sensorName,
+        "",
+        "Tenant",     d.tenant_name ?? "N/A",
+        "",
+        "This sensor disconnection is within the expected after-hours window for this tenant.",
+        "",
+        "Remarks: Normal Behavior"
+      ]);
+    } else if (isNeverExpected) {
+      body = lines([
+        "Sensor ID",  sensorId,
+        "",
+        "Sensor",     sensorName,
+        "",
+        "Tenant",     d.tenant_name ?? "N/A",
+        "",
+        "⚠ This sensor is not expected to disconnect at any time. Please investigate immediately and confirm if this disconnection is authorized. Thank you."
+      ]);
+    } else {
+      body = lines([
+        "Sensor ID",  sensorId,
+        "",
+        "Sensor",     sensorName,
+        "",
+        "Tenant",     d.tenant_name ?? "N/A",
+        "",
+        "Please verify if this disconnection is expected to happen at this time. Thank you."
+      ]);
+    }
   } else if (alertKey.includes("suspicious lsass")) {
     body = lines(["Source IP", get("srcip_host"), "", "Source Host", get("srcip_host"), "", "Can you confirm that the process accessing LSASS on this source host was an authorized and expected action?"]);
   } else if (alertKey.includes("uncommon application")) {
