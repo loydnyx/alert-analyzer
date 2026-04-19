@@ -728,6 +728,22 @@ function buildFollowUp(d: AlertData): string {
         "",
         "Please verify if this app is part of your operations. Thank you."
     ]);
+
+    } else if (alertKey.includes("command & control reputation") || alertKey.includes("command and control reputation")) {
+    body = lines([
+        "Source IP",             get("srcip_host"),
+        "",
+        "Destination IP",        get("dstip"),
+        "",
+        "Destination Host",      get("dstip_host", "dstip"),
+        "",
+        "Destination Reputation", get("dstip_reputation"),
+        "",
+        "App",                   get("appid_name", "proto_name"),
+        "",
+        "We detected repeated outbound connections to a destination classified as command-and-control. Please confirm if this activity is expected or legitimate. Thank you!"
+    ]);
+
   } else if (alertKey.includes("uncommon process")) {
     body = lines(["Host IP", get("srcip_host"), "", "Host Name", get("engid_name", "device_name"), "", "Process Name", get("process_name"), "", "User Name", get("srcip_username"), "", "Days Silent", get("days_silent"), "", "Event Outcome", get("event_outcome", "state"), "", `Can you confirm whether the execution of ${get("process_name")} was an authorized and expected activity?`]);
   } else if (alertKey.includes("user asset access")) {
@@ -962,7 +978,9 @@ export default function AlertAnalyzer() {
            alertKey.includes("uncommon application") ||
            alertKey.includes("encrypted phishing") ||
            alertKey.includes("external smb read") ||
-           alertKey.includes("external firewall policy")
+           alertKey.includes("external firewall policy") ||
+           alertKey.includes("command & control reputation") ||
+           alertKey.includes("command and control reputation")
   ? (data.dstip ?? data.dstip_host ?? null)
   : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
 
