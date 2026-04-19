@@ -1054,7 +1054,31 @@ if (ip && !isPrivateOrHostname(ip)) {
       <div style={s.plasmaWrap}><PlasmaCanvas speed={0.4} opacity={0.55} /></div>
       <div style={s.overlay} />
       <div style={s.content}>
-        <header style={s.header}>
+<header style={s.header}>
+  <button
+    onClick={async () => {
+      await fetch("/api/logout", { method: "POST" });
+      window.location.href = "/login";
+    }}
+    style={{
+      position: "fixed" as const, top: 20, right: 24, zIndex: 100,
+      fontFamily: "'Share Tech Mono', monospace", fontSize: 11,
+      letterSpacing: "0.1em", textTransform: "uppercase" as const,
+      padding: "7px 16px", borderRadius: 3, cursor: "pointer",
+      background: "transparent", color: "rgba(255,42,74,0.7)",
+      border: "1px solid rgba(255,42,74,0.3)",
+    }}
+    onMouseEnter={e => {
+      (e.target as HTMLButtonElement).style.background = "rgba(255,42,74,0.08)";
+      (e.target as HTMLButtonElement).style.color = "#ff2a4a";
+    }}
+    onMouseLeave={e => {
+      (e.target as HTMLButtonElement).style.background = "transparent";
+      (e.target as HTMLButtonElement).style.color = "rgba(255,42,74,0.7)";
+    }}
+  >
+    [ Logout ]
+  </button>
   <h1 style={s.h1}>
     Alert Analyzer
     <span style={{ animation: "cursor 1s infinite", marginLeft: 4, color: "#00ff9d" }}>_</span>

@@ -13,11 +13,24 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: true,
       sameSite: "strict",
-      maxAge: 60 * 60 * 8,
+      maxAge: 60 * 30, // 30 minutes
       path: "/",
     });
     return NextResponse.json({ ok: true });
   }
 
   return NextResponse.json({ ok: false }, { status: 401 });
+}
+
+// Logout
+export async function DELETE() {
+  const cookieStore = await cookies();
+  cookieStore.set("auth", "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    maxAge: 0,
+    path: "/",
+  });
+  return NextResponse.json({ ok: true });
 }
