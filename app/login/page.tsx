@@ -13,7 +13,8 @@ export default function LoginPage() {
   const [returning, setReturning] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
+ useEffect(() => {
+    document.title = "Alert Analyzer";
     const saved = localStorage.getItem("soc_user");
     if (saved) { setUser(saved); setReturning(true); }
   }, []);
