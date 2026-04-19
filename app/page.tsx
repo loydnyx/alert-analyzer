@@ -517,8 +517,15 @@ function buildFollowUp(d: AlertData): string {
         "",
         "Severity",          getNested("office365.Severity"),
         "",
-        "Alert Entity List", `User: ${user}`,
-        "",
+        "Alert Entity List", (() => {
+    const entityList = obj.event_summary as Record<string, unknown> | undefined;
+    const list = entityList?.alert_entity_list as Array<{entity_type: string, alert_entity_id: string}> | undefined;
+    if (list && list.length > 0) {
+        return list.map(e => `EntityType: ${e.entity_type}\nAlertEntityId: ${e.alert_entity_id}`).join("\n");
+    }
+    return `EntityType: User\nAlertEntityId: ${user}`;
+        })(), "",
+
         "User Name",         user,
         "",
         `We observed that a user (${user}) reported an email message as phishing/malware in Microsoft 365 Security & Compliance. Please confirm whether this activity is legitimate. Thank you!`
@@ -966,7 +973,7 @@ export default function AlertAnalyzer() {
     setAegisTenant(data.tenant_name ?? "Unknown Tenant");
 
     const alertKey = (data.xdr_event?.display_name ?? data.alert_type ?? "").toLowerCase();
-const ip = alertKey.includes("outbound destination country") || alertKey.includes("uncommon application")
+    const ip = alertKey.includes("outbound destination country") || alertKey.includes("uncommon application")
       ? (data.dstip ?? data.dstip_host ?? null)
       : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
 
