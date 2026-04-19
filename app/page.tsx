@@ -357,21 +357,6 @@ function buildFollowUp(d: AlertData): string {
         "Firewall Policy", get("fw_policy_id"),
         "",
         "Please verify if this firewall policy activity is part of your operations. Thank you."
-    ]);} else if (alertKey.includes("external firewall policy")) {
-    body = lines([
-        "Source IP",       get("srcip_host"),
-        "",
-        "Source Port",     get("srcport"),
-        "",
-        "Destination IP",  get("dstip_host", "dstip"),
-        "",
-        "Destination Port", get("dstport"),
-        "",
-        "Device Type",     get("dev_type"),
-        "",
-        "Firewall Policy", get("fw_policy_id"),
-        "",
-        "Please verify if this firewall policy activity is part of your operations. Thank you."
     ]);
 
     } else if (alertKey.includes("encrypted phishing")) {
@@ -973,9 +958,13 @@ export default function AlertAnalyzer() {
     setAegisTenant(data.tenant_name ?? "Unknown Tenant");
 
     const alertKey = (data.xdr_event?.display_name ?? data.alert_type ?? "").toLowerCase();
-    const ip = alertKey.includes("outbound destination country") || alertKey.includes("uncommon application")
-      ? (data.dstip ?? data.dstip_host ?? null)
-      : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
+    const ip = alertKey.includes("outbound destination country") || 
+           alertKey.includes("uncommon application") ||
+           alertKey.includes("encrypted phishing") ||
+           alertKey.includes("external smb read") ||
+           alertKey.includes("external firewall policy")
+  ? (data.dstip ?? data.dstip_host ?? null)
+  : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
 
     const isPrivateOrHostname = (val: string) =>
   /^10\./i.test(val) ||
