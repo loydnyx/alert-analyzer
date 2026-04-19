@@ -205,7 +205,12 @@ export default function LoginPage() {
           </button>
         </div>
       </div>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Share+Tech+Mono&display=swap');`}</style>
+     <style>{`
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Share+Tech+Mono&display=swap');
+  input::-ms-reveal,
+  input::-ms-clear { display: none; }
+  input::-webkit-credentials-auto-fill-button { display: none; }
+`}</style>
     </div>
   );
 }
