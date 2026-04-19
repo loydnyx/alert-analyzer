@@ -966,9 +966,9 @@ export default function AlertAnalyzer() {
     setAegisTenant(data.tenant_name ?? "Unknown Tenant");
 
     const alertKey = (data.xdr_event?.display_name ?? data.alert_type ?? "").toLowerCase();
-   const ip = alertKey.includes("outbound destination country") || alertKey.includes("uncommon application")
-  ? (data.dstip ?? data.dstip_host ?? null)
-  : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
+const ip = alertKey.includes("outbound destination country") || alertKey.includes("uncommon application")
+      ? (data.dstip ?? data.dstip_host ?? null)
+      : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
 
     const isPrivateOrHostname = (val: string) =>
   /^10\./i.test(val) ||
