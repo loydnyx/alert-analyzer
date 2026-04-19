@@ -724,8 +724,18 @@ function buildFollowUp(d: AlertData): string {
     }
   } else if (alertKey.includes("suspicious lsass")) {
     body = lines(["Source IP", get("srcip_host"), "", "Source Host", get("srcip_host"), "", "Can you confirm that the process accessing LSASS on this source host was an authorized and expected action?"]);
-  } else if (alertKey.includes("uncommon application")) {
-    body = lines(["Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "App", get("appid_name", "proto_name"), "", "Days Silent", get("days_silent"), "", "Please verify if this app is part of your operations. Thank you."]);
+ } else if (alertKey.includes("uncommon application")) {
+    body = lines([
+        "Source IP",      get("srcip_host"),
+        "",
+        "Destination IP", get("dstip"),
+        "",
+        "App",            get("appid_name", "proto_name"),
+        "",
+        "Days Silent",    get("days_silent"),
+        "",
+        "Please verify if this app is part of your operations. Thank you."
+    ]);
   } else if (alertKey.includes("uncommon process")) {
     body = lines(["Host IP", get("srcip_host"), "", "Host Name", get("engid_name", "device_name"), "", "Process Name", get("process_name"), "", "User Name", get("srcip_username"), "", "Days Silent", get("days_silent"), "", "Event Outcome", get("event_outcome", "state"), "", `Can you confirm whether the execution of ${get("process_name")} was an authorized and expected activity?`]);
   } else if (alertKey.includes("user asset access")) {
@@ -846,13 +856,13 @@ function buildRemark(key: RemarkKey, vt: VTResult | null, tenant: string, report
 type PillVariant = "red" | "yellow" | "green" | "gray" | "cyan";
 
 function Pill({ children, variant = "gray" }: { children: ReactNode; variant?: PillVariant }) {
-  const map: Record<PillVariant, CSSProperties> = {
-    red:    { background: "rgba(160,30,50,0.35)",   color: "#ff6b7a", border: "1px solid rgba(220,60,80,0.5)" },
-    yellow: { background: "rgba(160,110,20,0.35)",  color: "#ffc84a", border: "1px solid rgba(220,160,40,0.5)" },
-    green:  { background: "rgba(30,110,60,0.35)",   color: "#4fd87a", border: "1px solid rgba(50,180,90,0.5)" },
-    gray:   { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.18)" },
-    cyan:   { background: "rgba(20,120,140,0.3)",   color: "#4dd9ec", border: "1px solid rgba(40,180,200,0.45)" },
-  };
+ const map: Record<PillVariant, CSSProperties> = {
+  red:    { background: "rgba(255,42,74,0.1)",   color: "#ff2a4a", border: "1px solid rgba(255,42,74,0.4)",  boxShadow: "0 0 8px rgba(255,42,74,0.15)" },
+  yellow: { background: "rgba(255,170,0,0.1)",   color: "#ffaa00", border: "1px solid rgba(255,170,0,0.4)",  boxShadow: "0 0 8px rgba(255,170,0,0.15)" },
+  green:  { background: "rgba(0,255,157,0.08)",  color: "#00ff9d", border: "1px solid rgba(0,255,157,0.4)",  boxShadow: "0 0 8px rgba(0,255,157,0.15)" },
+  gray:   { background: "rgba(0,255,157,0.03)",  color: "rgba(0,255,157,0.4)", border: "1px solid rgba(0,255,157,0.1)" },
+  cyan:   { background: "rgba(0,212,255,0.08)",  color: "#00d4ff", border: "1px solid rgba(0,212,255,0.4)",  boxShadow: "0 0 8px rgba(0,212,255,0.15)" },
+};
   return (
     <span style={{ ...map[variant], display: "inline-flex", alignItems: "center", fontFamily: "'DM Mono', monospace", fontSize: 11.5, fontWeight: 500, letterSpacing: "0.04em", padding: "5px 14px", borderRadius: 20, whiteSpace: "nowrap" as const }}>
       {children}
@@ -863,11 +873,11 @@ function Pill({ children, variant = "gray" }: { children: ReactNode; variant?: P
 // ── AegisDropdown ─────────────────────────────────────────────────────────────
 
 const PILL_COLORS: Record<PillVariant, { bg: string; color: string; border: string }> = {
-  red:    { bg: "rgba(160,30,50,0.35)",   color: "#ff6b7a", border: "rgba(220,60,80,0.5)" },
-  yellow: { bg: "rgba(160,110,20,0.35)",  color: "#ffc84a", border: "rgba(220,160,40,0.5)" },
-  green:  { bg: "rgba(30,110,60,0.35)",   color: "#4fd87a", border: "rgba(50,180,90,0.5)" },
-  gray:   { bg: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)", border: "rgba(255,255,255,0.18)" },
-  cyan:   { bg: "rgba(20,120,140,0.3)",   color: "#4dd9ec", border: "rgba(40,180,200,0.45)" },
+  red:    { bg: "rgba(255,42,74,0.1)",   color: "#ff2a4a", border: "rgba(255,42,74,0.4)" },
+  yellow: { bg: "rgba(255,170,0,0.1)",   color: "#ffaa00", border: "rgba(255,170,0,0.4)" },
+  green:  { bg: "rgba(0,255,157,0.08)",  color: "#00ff9d", border: "rgba(0,255,157,0.4)" },
+  gray:   { bg: "rgba(0,255,157,0.03)",  color: "rgba(0,255,157,0.4)", border: "rgba(0,255,157,0.12)" },
+  cyan:   { bg: "rgba(0,212,255,0.08)",  color: "#00d4ff", border: "rgba(0,212,255,0.4)" },
 };
 
 function AegisDropdown<T extends string>({ label, value, options, onChange, colorMap }: {
@@ -956,9 +966,9 @@ export default function AlertAnalyzer() {
     setAegisTenant(data.tenant_name ?? "Unknown Tenant");
 
     const alertKey = (data.xdr_event?.display_name ?? data.alert_type ?? "").toLowerCase();
-    const ip = alertKey.includes("outbound destination country")
-      ? (data.dstip_host ?? data.dstip ?? null)
-      : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
+    const ip = alertKey.includes("outbound destination country") || alertKey.includes("uncommon application")
+  ? (data.dstip ?? data.dstip_host ?? null)
+  : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
 
     const isPrivateOrHostname = (val: string) =>
   /^10\./i.test(val) ||
@@ -1027,13 +1037,16 @@ if (ip && !isPrivateOrHostname(ip)) {
 
   return (
     <div style={s.root}>
-      <div style={s.plasmaWrap}><PlasmaCanvas speed={0.6} opacity={0.82} /></div>
+      <div style={s.plasmaWrap}><PlasmaCanvas speed={0.4} opacity={0.55} /></div>
       <div style={s.overlay} />
       <div style={s.content}>
         <header style={s.header}>
-          <h1 style={s.h1}>Alert Analyzer</h1>
-          <span style={s.sub}>Threat Intelligence Console</span>
-        </header>
+  <h1 style={s.h1}>
+    Alert Analyzer
+    <span style={{ animation: "cursor 1s infinite", marginLeft: 4, color: "#00ff9d" }}>_</span>
+  </h1>
+  <span style={s.sub}>◈ Stellar Cyber · Threat Intelligence Console · SOC Operations</span>
+</header>
         <hr style={s.hr} />
 
         {/* ── SEND TO / NO NEED TO REPORT banner ── */}
@@ -1185,11 +1198,22 @@ if (ip && !isPrivateOrHostname(ip)) {
         {toast.msg}
       </div>
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap');
-        @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
-        select option { background: #1a1e2a !important; color: #fff !important; }
-      `}</style>
+<style>{`
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;500&display=swap');
+  @keyframes blink { 0%,80%,100%{opacity:.15} 40%{opacity:1} }
+  @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
+  @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+  @keyframes cursor { 0%,100%{opacity:1} 49%{opacity:1} 50%{opacity:0} 99%{opacity:0} }
+  @keyframes flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:0.85} 94%{opacity:1} }
+  * { box-sizing: border-box; }
+  ::selection { background: rgba(0,255,157,0.2); color: #00ff9d; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #03050c; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,255,157,0.3); border-radius: 2px; }
+  textarea { caret-color: #00ff9d; }
+  textarea:focus { outline: none !important; border-color: rgba(0,255,157,0.4) !important; box-shadow: 0 0 0 1px rgba(0,255,157,0.15), inset 0 0 20px rgba(0,255,157,0.03) !important; }
+  select option { background: #03050c !important; color: #00ff9d !important; }
+`}</style>
     </div>
   );
 }
@@ -1203,11 +1227,11 @@ function Row({ children }: { children: ReactNode }) {
   return <div style={s.btnRow}>{children}</div>;
 }
 function Btn({ children, onClick, primary, green }: BtnProps) {
-  const extra: CSSProperties = primary
-    ? { background: "rgba(85,107,130,0.18)", color: "#a8d0ec", borderColor: "rgba(168,188,208,0.35)" }
-    : green
-    ? { background: "rgba(107,143,113,0.18)", color: "#8fcf9b", borderColor: "rgba(181,206,185,0.35)" }
-    : { background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" };
+const extra: CSSProperties = primary
+  ? { color: "#00d4ff", borderColor: "rgba(0,212,255,0.4)", boxShadow: "0 0 12px rgba(0,212,255,0.1)" }
+  : green
+  ? { color: "#00ff9d", borderColor: "rgba(0,255,157,0.4)", boxShadow: "0 0 12px rgba(0,255,157,0.1)" }
+  : { color: "rgba(255,42,74,0.7)", borderColor: "rgba(255,42,74,0.2)" };
   return <button style={{ ...s.btn, ...extra }} onClick={onClick}>{children}</button>;
 }
 function AnalysisRow({ label, value, mono, highlight }: { label: string; value: string; mono?: boolean; highlight?: ScannerVerdict }) {
@@ -1226,41 +1250,119 @@ function AnalysisRow({ label, value, mono, highlight }: { label: string; value: 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s: Record<string, CSSProperties> = {
-  root:       { fontFamily: "'DM Sans', sans-serif", minHeight: "100vh", position: "relative", overflow: "hidden", background: "#0a0c12" },
-  plasmaWrap: { position: "fixed", inset: 0, zIndex: 0 },
-  overlay:    { position: "fixed", inset: 0, zIndex: 1, background: "linear-gradient(to bottom, rgba(8,10,18,0.55) 0%, rgba(8,10,18,0.4) 60%, rgba(8,10,18,0.65) 100%)", backdropFilter: "blur(1px)", WebkitBackdropFilter: "blur(1px)" },
-  content:    { position: "relative", zIndex: 2, maxWidth: 780, margin: "0 auto", padding: "40px 20px 60px" },
-  header:     { display: "flex", alignItems: "baseline", gap: 12, marginBottom: 28 },
-  h1:         { fontFamily: "'DM Serif Display', serif", fontSize: 28, fontWeight: 400, color: "rgba(255,255,255,0.92)", letterSpacing: -0.4, margin: 0 },
-  sub:        { fontSize: 11, fontFamily: "'DM Mono', monospace", color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em", textTransform: "uppercase" },
-  hr:         { border: "none", borderTop: "1px solid rgba(255,255,255,0.1)", marginBottom: 24 },
-  sendToBanner: { display: "flex", alignItems: "center", gap: 12, background: "rgba(0,0,0,0.3)", border: "1px solid rgba(40,180,200,0.28)", borderRadius: 8, padding: "10px 16px", marginBottom: 16 },
-  sendToLabel:  { fontFamily: "'DM Mono', monospace", fontSize: 10.5, letterSpacing: "0.14em", color: "rgba(77,217,236,0.55)", textTransform: "uppercase" as const, flexShrink: 0 },
-  sendToValue:  { fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#4dd9ec", fontWeight: 500, letterSpacing: "0.03em" },
-  card:       { background: "rgba(255,255,255,0.06)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 20, marginBottom: 16 },
-  label:      { fontFamily: "'DM Mono', monospace", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: 10 },
-  textarea:   { width: "100%", minHeight: 160, fontFamily: "'DM Mono', monospace", fontSize: 12.5, lineHeight: 1.7, color: "rgba(255,255,255,0.82)", background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "14px 16px", resize: "vertical", boxSizing: "border-box", transition: "border-color 0.2s" },
-  btnRow:     { display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" },
-  btn:        { fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, letterSpacing: "0.02em", padding: "9px 20px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", transition: "all 0.15s", cursor: "pointer" },
-  pillRow:    { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4, alignItems: "center" },
-  dot:        { display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "rgba(168,188,220,0.7)", margin: "0 2px", animation: "blink 1.2s ease-in-out infinite" },
-  analysisGrid:  { display: "flex", flexDirection: "column" as const, gap: 10, marginTop: 4 },
-  analysisRow:   { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 8 },
-  analysisLabel: { fontFamily: "'DM Mono', monospace", fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" as const, flexShrink: 0 },
-  analysisValue: { fontSize: 13, color: "rgba(255,255,255,0.82)", textAlign: "right" as const },
-  // ── Aegis ──
-  aegisDropdownRow:    { display: "flex", gap: 20, flexWrap: "wrap", alignItems: "flex-end" },
-  aegisColLabel:       { fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.3)", display: "block", marginBottom: 4 },
-  aegisDivider:        { borderTop: "1px solid rgba(255,255,255,0.07)", margin: "18px 0" },
+  root:       { fontFamily: "'Exo 2', sans-serif", minHeight: "100vh", position: "relative", overflow: "hidden", background: "#03050c" },
+  plasmaWrap: { position: "fixed", inset: 0, zIndex: 0, opacity: 0.18 },
+  overlay:    { position: "fixed", inset: 0, zIndex: 1, background: "linear-gradient(to bottom, rgba(0,5,3,0.75) 0%, rgba(0,8,4,0.6) 50%, rgba(0,5,3,0.85) 100%)", backdropFilter: "blur(0px)" },
+  // Grid overlay
+  content:    { position: "relative", zIndex: 2, maxWidth: 820, margin: "0 auto", padding: "40px 24px 80px",
+    backgroundImage: "linear-gradient(rgba(0,255,157,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,157,0.03) 1px, transparent 1px)",
+    backgroundSize: "40px 40px",
+  },
+  header:     { display: "flex", flexDirection: "column" as const, gap: 6, marginBottom: 32, borderLeft: "3px solid #00ff9d", paddingLeft: 16, animation: "flicker 8s infinite" },
+  h1:         { fontFamily: "'Orbitron', monospace", fontSize: 26, fontWeight: 900, color: "#00ff9d", letterSpacing: "0.12em", margin: 0, textTransform: "uppercase" as const,
+    textShadow: "0 0 20px rgba(0,255,157,0.5), 0 0 60px rgba(0,255,157,0.2)" },
+  sub:        { fontSize: 10, fontFamily: "'Share Tech Mono', monospace", color: "rgba(0,255,157,0.4)", letterSpacing: "0.2em", textTransform: "uppercase" as const },
+  hr:         { border: "none", borderTop: "1px solid rgba(0,255,157,0.12)", marginBottom: 28 },
+
+  // Send to banner
+  sendToBanner: { display: "flex", alignItems: "center", gap: 12,
+    background: "rgba(0,212,255,0.05)", border: "1px solid rgba(0,212,255,0.2)",
+    borderLeft: "3px solid #00d4ff", borderRadius: 4, padding: "10px 16px", marginBottom: 16 },
+  sendToLabel:  { fontFamily: "'Share Tech Mono', monospace", fontSize: 10, letterSpacing: "0.2em",
+    color: "rgba(0,212,255,0.5)", textTransform: "uppercase" as const, flexShrink: 0 },
+  sendToValue:  { fontFamily: "'Share Tech Mono', monospace", fontSize: 13, color: "#00d4ff", fontWeight: 500,
+    letterSpacing: "0.05em", textShadow: "0 0 10px rgba(0,212,255,0.4)" },
+
+  // Cards
+  card: { background: "rgba(0,12,6,0.9)", border: "1px solid rgba(0,255,157,0.1)",
+    borderLeft: "2px solid rgba(0,255,157,0.4)", borderRadius: 4,
+    padding: 20, marginBottom: 14,
+    boxShadow: "0 4px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(0,255,157,0.05)" },
+  label: { fontFamily: "'Share Tech Mono', monospace", fontSize: 10, letterSpacing: "0.2em",
+    textTransform: "uppercase" as const, color: "rgba(0,255,157,0.4)", marginBottom: 12,
+    display: "flex", alignItems: "center", gap: 8 },
+
+  // Textarea
+  textarea: { width: "100%", minHeight: 160,
+    fontFamily: "'Share Tech Mono', monospace", fontSize: 12.5, lineHeight: 1.8,
+    color: "rgba(255,255,255,1)",
+    background: "rgba(0,8,4,0.8)",
+    border: "1px solid rgba(0,255,157,0.12)",
+    borderRadius: 3, padding: "14px 16px",
+    resize: "vertical" as const, boxSizing: "border-box" as const,
+    transition: "all 0.2s",
+    caretColor: "yellow",
+  },
+
+  // Buttons
+  btnRow: { display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" as const },
+  btn:    { fontFamily: "'Share Tech Mono', monospace", fontSize: 12, fontWeight: 500,
+    letterSpacing: "0.1em", textTransform: "uppercase" as const,
+    padding: "9px 22px", borderRadius: 3,
+    border: "1px solid rgba(0,255,157,0.2)",
+    transition: "all 0.15s", cursor: "pointer", background: "transparent" },
+
+  // Pills row
+  pillRow: { display: "flex", flexWrap: "wrap" as const, gap: 8, marginTop: 4, alignItems: "center" },
+  dot:     { display: "inline-block", width: 6, height: 6, borderRadius: "50%",
+    background: "#00ff9d", margin: "0 3px",
+    animation: "blink 1.2s ease-in-out infinite",
+    boxShadow: "0 0 6px #00ff9d" },
+
+  // Analysis grid
+  analysisGrid:  { display: "flex", flexDirection: "column" as const, gap: 0, marginTop: 4,
+    border: "1px solid rgba(0,255,157,0.08)", borderRadius: 3, overflow: "hidden" },
+  analysisRow:   { display: "flex", justifyContent: "space-between", alignItems: "center",
+    gap: 12, padding: "10px 14px",
+    borderBottom: "1px solid rgba(0,255,157,0.06)",
+    background: "rgba(0,255,157,0.02)" },
+  analysisLabel: { fontFamily: "'Share Tech Mono', monospace", fontSize: 10,
+    letterSpacing: "0.15em", textTransform: "uppercase" as const,
+    color: "rgba(0,255,157,0.35)", whiteSpace: "nowrap" as const, flexShrink: 0 },
+  analysisValue: { fontFamily: "'Share Tech Mono', monospace", fontSize: 12.5,
+    color: "rgba(0,255,157,0.8)", textAlign: "right" as const },
+
+  // Aegis
+  aegisDropdownRow:    { display: "flex", gap: 20, flexWrap: "wrap" as const, alignItems: "flex-end" },
+  aegisColLabel:       { fontFamily: "'Share Tech Mono', monospace", fontSize: 9.5,
+    letterSpacing: "0.18em", textTransform: "uppercase" as const,
+    color: "rgba(0,255,157,0.3)", display: "block", marginBottom: 6 },
+  aegisDivider:        { borderTop: "1px solid rgba(0,255,157,0.08)", margin: "18px 0" },
   remarkSection:       { display: "flex", flexDirection: "column" as const, gap: 12 },
-  remarkBtnRow:        { display: "flex", flexWrap: "wrap", gap: 8 },
-  remarkBtn:           { fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500, padding: "6px 14px", borderRadius: 20, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.45)", transition: "all 0.15s" },
-  remarkBtnActive:     { background: "rgba(77,217,236,0.15)", color: "#4dd9ec", border: "1px solid rgba(40,180,200,0.4)" },
-  toggleBtn:           { fontFamily: "'DM Mono', monospace", fontSize: 11.5, fontWeight: 500, padding: "7px 16px", borderRadius: 20, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)", transition: "all 0.15s" },
-  toggleBtnOn:         { background: "rgba(30,110,60,0.3)", color: "#4fd87a", border: "1px solid rgba(50,180,90,0.4)" },
-  remarkPreview:       { background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "14px 16px" },
-  remarkPreviewHeader: { marginBottom: 6 },
-  remarkPreviewLabel:  { fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.3)" },
-  remarkText:          { fontFamily: "'DM Mono', monospace", fontSize: 12.5, lineHeight: 1.7, color: "rgba(255,255,255,0.8)", margin: "8px 0 0" },
-  toast:               { position: "fixed", bottom: 24, right: 24, background: "rgba(30,40,55,0.9)", color: "#8fcf9b", border: "1px solid rgba(130,180,140,0.35)", borderRadius: 8, padding: "10px 18px", fontSize: 13, fontWeight: 500, transition: "all 0.25s", pointerEvents: "none", zIndex: 100, backdropFilter: "blur(10px)" },
+  remarkBtnRow:        { display: "flex", flexWrap: "wrap" as const, gap: 8 },
+  remarkBtn:           { fontFamily: "'Share Tech Mono', monospace", fontSize: 10.5, fontWeight: 500,
+    letterSpacing: "0.08em", padding: "6px 14px", borderRadius: 3, cursor: "pointer",
+    border: "1px solid rgba(0,255,157,0.12)", background: "transparent",
+    color: "rgba(0,255,157,0.35)", transition: "all 0.15s",
+    textTransform: "uppercase" as const },
+  remarkBtnActive:     { background: "rgba(0,255,157,0.08)", color: "#00ff9d",
+    border: "1px solid rgba(0,255,157,0.4)",
+    boxShadow: "0 0 10px rgba(0,255,157,0.1)" },
+  toggleBtn:           { fontFamily: "'Share Tech Mono', monospace", fontSize: 11, fontWeight: 500,
+    letterSpacing: "0.08em", padding: "7px 16px", borderRadius: 3, cursor: "pointer",
+    border: "1px solid rgba(0,255,157,0.15)", background: "transparent",
+    color: "rgba(0,255,157,0.35)", transition: "all 0.15s",
+    textTransform: "uppercase" as const },
+  toggleBtnOn:         { background: "rgba(0,255,157,0.08)", color: "#00ff9d",
+    border: "1px solid rgba(0,255,157,0.4)",
+    boxShadow: "0 0 10px rgba(0,255,157,0.15)" },
+  remarkPreview:       { background: "rgba(0,8,4,0.8)", border: "1px solid rgba(0,255,157,0.1)",
+    borderLeft: "2px solid rgba(0,255,157,0.3)", borderRadius: 3, padding: "14px 16px" },
+  remarkPreviewHeader: { marginBottom: 8 },
+  remarkPreviewLabel:  { fontFamily: "'Share Tech Mono', monospace", fontSize: 9.5,
+    letterSpacing: "0.18em", textTransform: "uppercase" as const,
+    color: "rgba(0,255,157,0.3)" },
+  remarkText:          { fontFamily: "'Share Tech Mono', monospace", fontSize: 12.5,
+    lineHeight: 1.8, color: "rgba(0,255,157,0.75)", margin: "8px 0 0" },
+
+  // Toast
+  toast: { position: "fixed", bottom: 24, right: 24,
+    background: "rgba(0,12,6,0.95)", color: "#00ff9d",
+    border: "1px solid rgba(0,255,157,0.3)",
+    boxShadow: "0 0 20px rgba(0,255,157,0.15)",
+    borderRadius: 3, padding: "10px 20px",
+    fontFamily: "'Share Tech Mono', monospace",
+    fontSize: 12, letterSpacing: "0.08em",
+    fontWeight: 500, transition: "all 0.25s",
+    pointerEvents: "none" as const, zIndex: 100 },
 };
