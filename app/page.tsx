@@ -724,7 +724,7 @@ function buildFollowUp(d: AlertData): string {
     }
   } else if (alertKey.includes("suspicious lsass")) {
     body = lines(["Source IP", get("srcip_host"), "", "Source Host", get("srcip_host"), "", "Can you confirm that the process accessing LSASS on this source host was an authorized and expected action?"]);
- } else if (alertKey.includes("uncommon application")) {
+} else if (alertKey.includes("uncommon application")) {
     body = lines([
         "Source IP",      get("srcip_host"),
         "",
@@ -966,7 +966,7 @@ export default function AlertAnalyzer() {
     setAegisTenant(data.tenant_name ?? "Unknown Tenant");
 
     const alertKey = (data.xdr_event?.display_name ?? data.alert_type ?? "").toLowerCase();
-    const ip = alertKey.includes("outbound destination country") || alertKey.includes("uncommon application")
+   const ip = alertKey.includes("outbound destination country") || alertKey.includes("uncommon application")
   ? (data.dstip ?? data.dstip_host ?? null)
   : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
 
