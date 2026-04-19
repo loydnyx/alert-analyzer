@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
-
 export function proxy(req: NextRequest) {
   const auth = req.cookies.get("auth");
   const { pathname } = req.nextUrl;
