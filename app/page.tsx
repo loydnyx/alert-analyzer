@@ -13,6 +13,7 @@ interface AlertData {
   xdr_event?: XdrEvent;
   tenant_name?: string;
   action?: string;
+  srcip?: string;
   srcip_host?: string;
   srcip_type?: string;
   dstip_host?: string;
@@ -281,7 +282,7 @@ function buildFollowUp(d: AlertData): string {
     const threshold = get("threshold") !== "N/A" ? get("threshold") : getNested("stellar.threshold") !== "N/A" ? getNested("stellar.threshold") : get("typical");
     body = lines(["App", get("appid_name"), "", "App ID", get("appid"), "", "Actual", get("actual"), "", "Threshold", threshold, "", "Source Host", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "Destination Host", get("dstip_host"), "", "Please verify if the app is part of your operations. Thank you."]);
   } else if (alertKey.includes("bad source reputation")) {
-    body = lines(["Source IP", get("srcip_host"), "", "Action", get("action"), "", "Destination IP", get("dstip_host", "dstip"), "", "Could you please confirm if this is a recognized malicious source IP within your network or used by your team? Thank you."]);
+    body = lines(["Source IP", get("srcip"), "", "Action", get("action"), "", "Destination IP", get("dstip_host", "dstip"), "", "Could you please confirm if this is a recognized malicious source IP within your network or used by your team? Thank you."]);
   } else if (alertKey.includes("data ingestion")) {
     const device = obj.device as Record<string, unknown> | undefined;
     const sensorName = (device?.name as string) ?? get("sensor_name", "engid_name");
@@ -999,16 +1000,18 @@ export default function AlertAnalyzer() {
     setAegisTenant(data.tenant_name ?? "Unknown Tenant");
 
     const alertKey = (data.xdr_event?.display_name ?? data.alert_type ?? "").toLowerCase();
-    const ip = alertKey.includes("outbound destination country") || 
-           alertKey.includes("uncommon application") ||
-           alertKey.includes("encrypted phishing") ||
-           alertKey.includes("external smb read") ||
-           alertKey.includes("external firewall policy") ||
-           alertKey.includes("command & control reputation") ||
-           alertKey.includes("command and control reputation") ||
-           alertKey.includes("bad destination reputation")
+    const ip = alertKey.includes("bad source reputation")
+  ? (data.srcip ?? data.srcip_host ?? null)
+  : alertKey.includes("outbound destination country") ||
+    alertKey.includes("uncommon application") ||
+    alertKey.includes("encrypted phishing") ||
+    alertKey.includes("external smb read") ||
+    alertKey.includes("command & control reputation") ||
+    alertKey.includes("command and control reputation") ||
+    alertKey.includes("private to public exploit") ||
+    alertKey.includes("external protocol account login failure")
   ? (data.dstip ?? data.dstip_host ?? null)
-  : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
+  : (data.srcip ?? data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
 
     const isPrivateOrHostname = (val: string) =>
   /^10\./i.test(val) ||
