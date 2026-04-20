@@ -634,29 +634,21 @@ function buildFollowUp(d: AlertData): string {
     ]);
   } else if (alertKey.includes("office 365 multiple files restored")) {
     body = lines(["Windows Event Source", get("event_source", "msg_origin"), "", "Source IP", get("srcip_host"), "", "User ID", get("srcip_username"), "", "File Name", get("file_name", "object_id"), "", "Please confirm whether this file restore activity by the user is authorized. Thank you."]);
-  } else if (alertKey.includes("outbound destination country")) {
+ } else if (alertKey.includes("outbound destination country")) {
     body = lines([
+      "Source IP",           get("srcip_host"),
+      "",
+      "Destination IP",      get("dstip"),
+      "",
+      "Source Port",         get("srcport"),
+      "",
+      "Destination Port",    get("dstport"),
+      "",
+      "Destination Host",    get("dstip_host"),
+      "",
       "Destination Country", getGeo("dstip"),
       "",
-      "Source IP",          get("srcip_host"),
-      "",
-      "Destination IP",     get("dstip"),
-      "",
-      "Source Host",        get("hostip_host", "engid_name", "srcip_host"),
-      "",
-      "Destination Host",   get("dstip_host"),
-      "",
-      "App",                get("appid_name", "proto_name"),
-      "",
-      "Stability",          get("stability"),
-      "",
-      "Days Stable",        get("days_stable"),
-      "",
-      "Diversity",          get("diversity"),
-      "",
-      "Child Count",        get("child_count"),
-      "",
-      "Please confirm if this is expected. Thank you."
+      "Can you please confirm if this new outbound connection is expected and legitimate for this host?"
     ]);
   } else if (alertKey.includes("outbytes anomaly")) {
     body = lines(["Source IP", get("srcip_host"), "", "Destination Host", get("dstip_host"), "", "Actual", get("actual"), "", "Typical", get("typical"), "", "Please verify if this outbound data transfer is part of your operations as of this moment or not. Thank you!"]);
