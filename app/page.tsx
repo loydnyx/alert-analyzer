@@ -689,11 +689,10 @@ function buildFollowUp(d: AlertData): string {
     ]);
   } else if (alertKey.includes("sensitive windows active directory") || alertKey.includes("active directory attribute")) {
     body = lines(["Host IP", get("srcip_host"), "", "Host Name", get("engid_name", "device_name"), "", "Event Outcome", get("event_outcome", "state"), "", "Please confirm whether this Active Directory attribute modification was an authorized and expected activity. Thank you."]);
-  } else if (alertKey.includes("sensor status")) {
-    // ── After-hours expected disconnection logic ──────────────────────────
+ } else if (alertKey.includes("sensor status")) {
     const EXPECTED_AFTER_HOURS: Record<string, number> = {
-      "belmont": 17, // after 5 PM PH time
-      "siycha":   21, // after 9 PM PH time
+      "belmont": 17,
+      "siycha":  21,
     };
     const NOT_EXPECTED_SENSORS = [
       "modular",
@@ -715,11 +714,9 @@ function buildFollowUp(d: AlertData): string {
 
     if (isAfterHours && !isNeverExpected) {
       body = lines([
-        "Sensor ID",  sensorId,
+        "Sensor ID", sensorId,
         "",
-        "Sensor",     sensorName,
-        "",
-        "Tenant",     d.tenant_name ?? "N/A",
+        "Sensor",    sensorName,
         "",
         "This sensor disconnection is within the expected after-hours window for this tenant.",
         "",
@@ -727,21 +724,17 @@ function buildFollowUp(d: AlertData): string {
       ]);
     } else if (isNeverExpected) {
       body = lines([
-        "Sensor ID",  sensorId,
+        "Sensor ID", sensorId,
         "",
-        "Sensor",     sensorName,
-        "",
-        "Tenant",     d.tenant_name ?? "N/A",
+        "Sensor",    sensorName,
         "",
         "⚠ This sensor is not expected to disconnect at any time. Please investigate immediately and confirm if this disconnection is authorized. Thank you."
       ]);
     } else {
       body = lines([
-        "Sensor ID",  sensorId,
+        "Sensor ID", sensorId,
         "",
-        "Sensor",     sensorName,
-        "",
-        "Tenant",     d.tenant_name ?? "N/A",
+        "Sensor",    sensorName,
         "",
         "Please verify if this disconnection is expected to happen at this time. Thank you."
       ]);
