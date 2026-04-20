@@ -642,7 +642,7 @@ function buildFollowUp(d: AlertData): string {
       "",
       "Destination IP",     get("dstip"),
       "",
-      "Source Host",        get("srcip_host"),
+      "Source Host",        get("hostip_host", "engid_name", "srcip_host"),
       "",
       "Destination Host",   get("dstip_host"),
       "",
