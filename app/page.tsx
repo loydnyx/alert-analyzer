@@ -636,7 +636,7 @@ function buildFollowUp(d: AlertData): string {
     body = lines(["Windows Event Source", get("event_source", "msg_origin"), "", "Source IP", get("srcip_host"), "", "User ID", get("srcip_username"), "", "File Name", get("file_name", "object_id"), "", "Please confirm whether this file restore activity by the user is authorized. Thank you."]);
  } else if (alertKey.includes("outbound destination country")) {
     body = lines([
-      "Source IP",           get("srcip_host"),
+      "Source IP",           get("srcip"),
       "",
       "Destination IP",      get("dstip"),
       "",
