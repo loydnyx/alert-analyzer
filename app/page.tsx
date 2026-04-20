@@ -1005,7 +1005,8 @@ export default function AlertAnalyzer() {
            alertKey.includes("external smb read") ||
            alertKey.includes("external firewall policy") ||
            alertKey.includes("command & control reputation") ||
-           alertKey.includes("command and control reputation")
+           alertKey.includes("command and control reputation") ||
+           alertKey.includes("bad destination reputation")
   ? (data.dstip ?? data.dstip_host ?? null)
   : (data.srcip_host ?? data.host_ip ?? data["IP/name"] ?? data.ip ?? null);
 
