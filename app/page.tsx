@@ -360,6 +360,17 @@ function buildFollowUp(d: AlertData): string {
         "Please verify if this firewall policy activity is part of your operations. Thank you."
     ]);
 
+    } else if (alertKey.includes("external firewall denial")) {
+    body = lines([
+      "Source IP",      get("srcip_host"),
+      "",
+      "Destination IP", get("dstip_host", "dstip"),
+      "",
+      "Action",         get("action"),
+      "",
+      "Please verify the source IP if related to your operations, Thank you!"
+    ]);
+
     } else if (alertKey.includes("encrypted phishing")) {
     body = lines([
         "Source IP",          get("srcip_host"),

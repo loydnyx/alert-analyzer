@@ -114,7 +114,9 @@ export default function LoginPage() {
                 style={{
                   width: "100%", padding: "12px 14px",
                   background: "rgba(0,8,4,0.8)",
-                  border: `1px solid ${error ? "rgba(255,42,74,0.4)" : userFocus ? "rgba(0,255,157,0.4)" : "rgba(0,255,157,0.15)"}`,
+                  borderWidth: "1px",
+                  borderStyle: "solid",
+                  borderColor: error ? "rgba(255,42,74,0.4)" : userFocus ? "rgba(0,255,157,0.4)" : "rgba(0,255,157,0.15)",
                   borderRadius: 3, color: "#fff", fontSize: 13,
                   fontFamily: "'Share Tech Mono', monospace", outline: "none",
                   boxSizing: "border-box" as const,
