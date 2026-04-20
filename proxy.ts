@@ -4,7 +4,11 @@ export function proxy(req: NextRequest) {
   const auth = req.cookies.get("auth");
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith("/login") || pathname.startsWith("/api/auth")) {
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/virustotal")
+  ) {
     return NextResponse.next();
   }
 
