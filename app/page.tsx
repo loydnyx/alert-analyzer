@@ -288,9 +288,9 @@ function buildFollowUp(d: AlertData): string {
     const sensorName = (device?.name as string) ?? get("sensor_name", "engid_name");
     body = lines(["Sensor", sensorName, "", "Please confirm if this activity is expected and authorized on your end. Thank you."]);
   } else if (alertKey.includes("eset protect")) {
-    body = lines(["Host Name", get("device_name", "engid_name"), "", "Source IP", `${get("srcip_host")} (Malicious)`, "", "Destination IP", get("dstip_host", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "Please verify if the source IP is related to your operations. If not, we suggest blocking the IP on your end and informing us, as it was flagged as malicious by security vendors."]);
+    body = lines(["Host Name", get("device_name", "engid_name"), "", "Source IP", `${get("srcip")} (Malicious)`, "", "Destination IP", get("dstip_hostg", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "Please verify if the source IP is related to your operations. If not, we suggest blocking the IP on your end and informing us, as it was flagged as malicious by security vendors."]);
   } else if (alertKey.includes("exploited c") || alertKey.includes("c&c")) {
-    body = lines(["Source IP", `${get("srcip_host")} (Malicious)`, "", "Source Host", get("srcip_host"), "", "Source Port", get("srcport"), "", "Destination IP", get("dstip_host", "dstip"), "", "Destination Host", get("dstip_host", "dstip"), "", "Destination Port", get("dstport"), "", "Please confirm if this communication is expected and authorized for your systems. Thank you."]);
+    body = lines(["Source IP", `${get("srcip")} (Malicious)`, "", "Source Host", get("srcip_host"), "", "Source Port", get("srcport"), "", "Destination IP", get("dstip_host", "dstip"), "", "Destination Host", get("dstip_host", "dstip"), "", "Destination Port", get("dstport"), "", "Please confirm if this communication is expected and authorized for your systems. Thank you."]);
   } else if (alertKey.includes("external account login failure")) {
     const totalFailed = getNested("event_summary.total_failed") !== "N/A"
       ? getNested("event_summary.total_failed")
@@ -778,11 +778,12 @@ function buildFollowUp(d: AlertData): string {
     body = lines(["Source Username", get("srcip_username"), "", "Source IP", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "Login Result", get("login_result", "action"), "", "Please confirm if this login from an unusual location is expected and authorized. Thank you."]);
   } else if (alertKey.includes("long app session")) {
     body = lines(["Source IP", get("srcip"), "", "Destination IP", get("dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "App", get("appid_name", "proto_name"), "", "Please confirm if this activity is done in your end, thank you"]);
-  } else {
-    body = lines(["Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "Action", get("action"), "", "Please confirm if this activity is expected and authorized on your end. Thank you."]);
+} else {
+    body = "⚠ No template available for this alert type yet. Please create the follow-up details manually.";
   }
 
 
+  if (!body) return "";
   return `${header}\n${body}`;
 }
 
@@ -1032,8 +1033,10 @@ if (ip && !isPrivateOrHostname(ip)) {
 
           setVtResult(vt);
           setVtLoading(false);
-          applyPreset(vt, analysis.verdict);
-          setShowAegis(true);
+          if (!buildFollowUp(data).includes("No template available")) {
+            applyPreset(vt, analysis.isScannerAnomaly ? analysis.verdict : undefined);
+            setShowAegis(true);
+          }
         })
         .catch(err => {
           const errVt: VTResult = {
@@ -1042,12 +1045,17 @@ if (ip && !isPrivateOrHostname(ip)) {
           };
           setVtResult(errVt);
           setVtLoading(false);
-          applyPreset(null, analysis.verdict);
-          setShowAegis(true);
+          if (!buildFollowUp(data).includes("No template available")) {
+            applyPreset(null, analysis.isScannerAnomaly ? analysis.verdict : undefined);
+            setShowAegis(true);
+          }
         });
-    } else {
-      applyPreset(null, analysis.verdict);
-      setShowAegis(true);
+   } else {
+      const fu = buildFollowUp(data);
+      if (!fu.includes("No template available")) {
+        applyPreset(null, analysis.isScannerAnomaly ? analysis.verdict : undefined);
+        setShowAegis(true);
+      }
     }
   };
 
@@ -1086,7 +1094,7 @@ if (ip && !isPrivateOrHostname(ip)) {
 <header style={s.header}>
   <button
     onClick={async () => {
-      await fetch("/api/logout", { method: "POST" });
+      await fetch("/api/auth/logout", { method: "POST" });
       window.location.href = "/login";
     }}
     style={{
@@ -1144,8 +1152,21 @@ if (ip && !isPrivateOrHostname(ip)) {
         </Card>
 
         <Card label="Message 2 — Follow-up Details">
-          <textarea style={{ ...s.textarea, minHeight: 260 }} value={followUp} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setFollowUp(e.target.value)} placeholder="Follow-up details will appear here…" />
-          <Row><Btn green onClick={copyFollowUp}>Copy Follow-up</Btn></Row>
+          {followUp.includes("No template available") ? (
+            <div style={{
+              background: "rgba(255,170,0,0.08)", border: "1px solid rgba(255,170,0,0.4)",
+              borderLeft: "3px solid #ffaa00", borderRadius: 3, padding: "16px 18px",
+              fontFamily: "'Share Tech Mono', monospace", fontSize: 12.5,
+              color: "#ffaa00", letterSpacing: "0.05em", lineHeight: 1.8,
+            }}>
+              ⚠ No template available for this alert type yet. Please create the follow-up details manually.
+            </div>
+          ) : (
+            <>
+              <textarea style={{ ...s.textarea, minHeight: 260 }} value={followUp} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setFollowUp(e.target.value)} placeholder="Follow-up details will appear here…" />
+              <Row><Btn green onClick={copyFollowUp}>Copy Follow-up</Btn></Row>
+            </>
+          )}
         </Card>
 
         {vtIp && (
