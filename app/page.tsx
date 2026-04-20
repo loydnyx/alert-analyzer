@@ -539,8 +539,26 @@ function buildFollowUp(d: AlertData): string {
     body = lines(["Source IP", get("srcip_host"), "", "Source Host", get("srcip_host"), "", "Source Port", get("srcport"), "", "Destination IP", get("dstip_host", "dstip"), "", "Destination Host", get("dstip_host"), "", "Destination Port", get("dstport"), "", "May we confirm if this activity is expected or part of system operations? Thank you."]);
   } else if (alertKey.includes("internal smb write")) {
     body = lines(["Source Host", get("srcip_host"), "", "Destination Host", get("dstip_host", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "May we confirm if this activity is expected or part of system operations? Thank you."]);
-  } else if (alertKey.includes("internal user login failure")) {
-    body = lines(["Source Host", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Total Number Failed", get("actual", "count"), "", "Login Type", get("login_type", "proto_name"), "", "Please verify whether these SMB login failure attempts are part of legitimate user activity, thanks!"]);
+ } else if (alertKey.includes("internal user login failure")) {
+    const totalFailed = getNested("event_summary.total_failed") !== "N/A"
+      ? getNested("event_summary.total_failed")
+      : get("num_failed", "actual", "count");
+
+    body = lines([
+      "Source IP",          get("srcip_host"),
+      "",
+      "Source Username",    get("srcip_username", "username"),
+      "",
+      "Destination IP",     get("dstip", "hostip"),
+      "",
+      "Destination Host",   get("dstip_host", "engid_name"),
+      "",
+      "Total Number Failed", totalFailed,
+      "",
+      "Login Type",         get("login_type", "proto_name"),
+      "",
+      "Please verify whether these login failure attempts are part of legitimate user activity. Thank you!"
+    ]);
   } else if (alertKey.includes("login attempt location count")) {
     const username = get("srcip_username");
     body = lines(["Source User ID", get("srcip_usersid", "user_id"), "", "Source Username", username, "", "Source IP", get("srcip_host"), "", "Actual Locations", get("actual"), "", "Typical Locations", get("typical"), "", `We detected multiple failed login attempts for the account ${username} originating from several geographically diverse locations within a short period. Please confirm whether these attempts are legitimate. Thank you!`]);
@@ -617,7 +635,29 @@ function buildFollowUp(d: AlertData): string {
   } else if (alertKey.includes("office 365 multiple files restored")) {
     body = lines(["Windows Event Source", get("event_source", "msg_origin"), "", "Source IP", get("srcip_host"), "", "User ID", get("srcip_username"), "", "File Name", get("file_name", "object_id"), "", "Please confirm whether this file restore activity by the user is authorized. Thank you."]);
   } else if (alertKey.includes("outbound destination country")) {
-    body = lines(["Source IP", get("srcip_host"), "", "Destination IP", get("dstip_host", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "Destination Host", get("dstip_host"), "", "Destination Country", getGeo("dstip"), "", "Can you please confirm if this new outbound connection is expected and legitimate for this host?"]);
+    body = lines([
+      "Destination Country", getGeo("dstip"),
+      "",
+      "Source IP",          get("srcip_host"),
+      "",
+      "Destination IP",     get("dstip"),
+      "",
+      "Source Host",        get("srcip_host"),
+      "",
+      "Destination Host",   get("dstip_host"),
+      "",
+      "App",                get("appid_name", "proto_name"),
+      "",
+      "Stability",          get("stability"),
+      "",
+      "Days Stable",        get("days_stable"),
+      "",
+      "Diversity",          get("diversity"),
+      "",
+      "Child Count",        get("child_count"),
+      "",
+      "Please confirm if this is expected. Thank you."
+    ]);
   } else if (alertKey.includes("outbytes anomaly")) {
     body = lines(["Source IP", get("srcip_host"), "", "Destination Host", get("dstip_host"), "", "Actual", get("actual"), "", "Typical", get("typical"), "", "Please verify if this outbound data transfer is part of your operations as of this moment or not. Thank you!"]);
   } else if (alertKey.includes("private to public exploit")) {
