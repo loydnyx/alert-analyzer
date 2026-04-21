@@ -644,8 +644,30 @@ function buildFollowUp(d: AlertData): string {
         "",
         "Please verify whether this file-sharing activity was authorized and aligned with current business operations."
     ]);
+
+  } else if (alertKey.includes("office 365 sharing policy")) {
+    body = lines([
+        "Windows Organization ID", get("service_id"),
+        "",
+        "User ID",                 getNested("office365.UserId"),
+        "",
+        "Object ID",               getNested("office365.ObjectId"),
+        "",
+        "Please verify if this account is authorized to make changes to the 365 Sharing Policy. Thank you!"
+    ]);
+    
   } else if (alertKey.includes("office 365 multiple files restored")) {
-    body = lines(["Windows Event Source", get("event_source", "msg_origin"), "", "Source IP", get("srcip_host"), "", "User ID", get("srcip_username"), "", "File Name", get("file_name", "object_id"), "", "Please confirm whether this file restore activity by the user is authorized. Thank you."]);
+    body = lines([
+        "Source IP",      get("srcip_host"),
+        "",
+        "User ID",        getNested("office365.UserId"),
+        "",
+        "File Name",      getNested("office365.SourceFileName"),
+        "",
+        "Object ID",      getNested("office365.ObjectId"),
+        "",
+        "Please confirm whether this file restore activity by the user is authorized. Thank you."
+    ]);
  } else if (alertKey.includes("outbound destination country")) {
     body = lines([
       "Source IP",           get("srcip"),
@@ -782,9 +804,23 @@ function buildFollowUp(d: AlertData): string {
     ]);
 
   } else if (alertKey.includes("uncommon process")) {
-    body = lines(["Host IP", get("srcip_host"), "", "Host Name", get("engid_name", "device_name"), "", "Process Name", get("process_name"), "", "User Name", get("srcip_username"), "", "Days Silent", get("days_silent"), "", "Event Outcome", get("event_outcome", "state"), "", `Can you confirm whether the execution of ${get("process_name")} was an authorized and expected activity?`]);
+    body = lines(["Host IP", getNested("host.ip"), "", "Host Name", get("engid_name", "device_name"), "", "Process Name", get("process_name"), "", "User Name", get("srcip_username"), "", "Days Silent", get("days_silent"), "", "Event Outcome", getNested("event.outcome"), "", `Can you confirm whether the execution of ${get("process_name")} was an authorized and expected activity?`]);
   } else if (alertKey.includes("user asset access")) {
-    body = lines(["Source Host", get("srcip_host"), "", "Target Username", get("srcip_username", "target_username"), "", "Service Name", get("service_name", "event_data_servicename"), "", "We observed a Kerberos service ticket request — can you confirm this activity is expected and authorized?"]);
+    const targetUser  = get("smb_username", "srcip_username", "target_username");
+    const serviceName = getNested("event_data.ServiceName");
+    const sourceHost  = get("engid_name", "srcip_host");
+
+    body = lines([
+        "Source Host",             get("srcip_host"),
+        "",
+        "Target Username",         targetUser,
+        "",
+        "Event Data Servicename",  serviceName,
+        "",
+        "Child Count",             get("child_count"),
+        "",
+        "We observed an unusual asset access activity. Can you confirm this activity is expected and authorized?"
+    ]);
   } else if (alertKey.includes("user login location")) {
     body = lines(["Source Username", get("srcip_username"), "", "Source IP", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "Login Result", get("login_result", "action"), "", "Please confirm if this login from an unusual location is expected and authorized. Thank you."]);
   } else if (alertKey.includes("long app session")) {
@@ -878,18 +914,29 @@ function buildAegisPreset(
   };
 }
 
+const REMARK_TENANT_PROJECTS: Record<string, string> = {
+  "belmont":                    "Project Selene",
+  "cantilan bank":              "Project Atlas",
+  "eton properties":            "Project Titan",
+  "mwell":                      "Project Chiron",
+  "siycha group of companies":  "Project Orion",
+};
+
 function buildRemark(key: RemarkKey, vt: VTResult | null, tenant: string, reportSent: boolean): string {
-  const project = tenant !== "Unknown Tenant" ? `Project ${tenant}` : "Project";
+  const tenantLower = tenant.toLowerCase();
+  const projectCode = Object.entries(REMARK_TENANT_PROJECTS)
+    .find(([k]) => tenantLower.includes(k))?.[1];
+  const project = projectCode ?? (tenant !== "Unknown Tenant" ? `Project ${tenant}` : "Project");
   const vendors = vt?.malicious ?? 0;
   switch (key) {
     case "clean-not-found":
       return reportSent
-        ? "The source IP was not found in the blocked list and was not detected as malicious. Sent a confirmation to the client."
-        : "The source IP was not found in the blocked list and was not detected as malicious.";
+  ? `The source IP was not found in the blocked list and was not detected as malicious. Sent a confirmation to ${project}.`
+  : "The source IP was not found in the blocked list and was not detected as malicious.";
     case "already-blocked":
       return "The source IP is already blocked.";
     case "no-remarks-confirmed":
-      return reportSent ? "Sent to Client for Confirmation." : "No Remarks.";
+      return reportSent ? `Sent to ${project} for Confirmation.` : "No Remarks.";
     case "malicious-not-found":
       return `The source IP was not found in the blocked list but was detected as malicious by ${vendors} security vendor${vendors !== 1 ? "s" : ""}. Request for blocking sent to ${project}.`;
     case "in-list-not-blocked":
