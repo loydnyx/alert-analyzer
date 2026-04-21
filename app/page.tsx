@@ -1045,7 +1045,7 @@ if (ip && !isPrivateOrHostname(ip)) {
           setVtResult(vt);
           setVtLoading(false);
           if (!buildFollowUp(data).includes("No template available")) {
-            applyPreset(vt, analysis.isScannerAnomaly ? analysis.verdict : undefined);
+           applyPreset(vt, analysis.verdict);
             setShowAegis(true);
           }
         })
@@ -1057,14 +1057,14 @@ if (ip && !isPrivateOrHostname(ip)) {
           setVtResult(errVt);
           setVtLoading(false);
           if (!buildFollowUp(data).includes("No template available")) {
-            applyPreset(null, analysis.isScannerAnomaly ? analysis.verdict : undefined);
+           applyPreset(null, analysis.verdict);
             setShowAegis(true);
           }
         });
    } else {
       const fu = buildFollowUp(data);
       if (!fu.includes("No template available")) {
-        applyPreset(null, analysis.isScannerAnomaly ? analysis.verdict : undefined);
+       applyPreset(null, analysis.verdict);
         setShowAegis(true);
       }
     }
@@ -1092,10 +1092,24 @@ if (ip && !isPrivateOrHostname(ip)) {
   const activeRemark = REMARK_OPTIONS.find(r => r.key === aegisRemarkKey);
   const needsReport  = activeRemark?.needsReport ?? true;
 
+  // ── Tenant → Project Code Name mapping ──
+const TENANT_PROJECTS: Record<string, string> = {
+  "belmont":                    "Project Selene",
+  "cantilan bank":              "Project Atlas",
+  "eton properties":            "Project Titan",
+  "mwell":                      "Project Chiron",
+  "siycha group of companies":  "Project Orion",
+};
+
+const tenantLower = (sendTo ?? "").toLowerCase();
+const projectName = Object.entries(TENANT_PROJECTS)
+  .find(([k]) => tenantLower.includes(k))?.[1] ?? null;
+
   // Determine if MWELL + denied/remediated → no need to report
-  const isMwellNoReport =
-    sendTo?.toUpperCase() === "MWELL" &&
-    caseAnalysis?.verdict === "false-positive";
+const isRemediated = ["deny", "denied", "client-rst", "server-rst"]
+  .includes((caseAnalysis?.detectionResult ?? "").toLowerCase().trim());
+
+const isNoNeedToReport = isRemediated;
 
   return (
     <div style={s.root}>
@@ -1137,20 +1151,33 @@ if (ip && !isPrivateOrHostname(ip)) {
 
         {/* ── SEND TO / NO NEED TO REPORT banner ── */}
         {sendTo && (
-          isMwellNoReport ? (
-            <div style={{ ...s.sendToBanner, borderColor: "rgba(220,160,40,0.45)", background: "rgba(100,70,10,0.28)" }}>
-              <span style={{ ...s.sendToLabel, color: "rgba(255,200,74,0.65)" }}>⚠ NO NEED TO REPORT:</span>
-              <span style={{ ...s.sendToValue, color: "#ffc84a" }}>
-                {sendTo} — action is already denied / remediated
-              </span>
-            </div>
-          ) : (
-            <div style={s.sendToBanner}>
-              <span style={s.sendToLabel}>SEND TO:</span>
-              <span style={s.sendToValue}>{sendTo}</span>
-            </div>
-          )
-        )}
+            isNoNeedToReport ? (
+             <div style={{ ...s.sendToBanner, border: "1px solid rgba(220,160,40,0.45)", borderLeft: "3px solid #ffaa00", background: "rgba(100,70,10,0.28)" }}>
+                <span style={{ ...s.sendToLabel, color: "rgba(255,200,74,0.65)" }}>⚠ NO NEED TO REPORT:</span>
+                <span style={{ ...s.sendToValue, color: "#ffc84a" }}>
+                  {sendTo}{projectName && ` | ${projectName}`} — action is already {caseAnalysis?.detectionResult}
+                </span>
+              </div>
+            ) : (
+              <div style={s.sendToBanner}>
+                <span style={s.sendToLabel}>SEND TO:</span>
+                <span style={s.sendToValue}>
+                  {sendTo}
+                  {projectName && (
+                    <span style={{
+                      marginLeft: 12,
+                      borderLeft: "1px solid rgba(0,212,255,0.3)",
+                      paddingLeft: 12,
+                      color: "#ffaa00",
+                      textShadow: "0 0 10px rgba(255,170,0,0.4)",
+                    }}>
+                      {projectName}
+                    </span>
+                  )}
+                </span>
+              </div>
+            )
+          )}
 
         <Card label="Input — Alert JSON">
           <textarea style={s.textarea} value={jsonInput} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setJsonInput(e.target.value)} placeholder={`Paste your alert JSON here…\n\n${SAMPLE_JSON}`} />
