@@ -1156,7 +1156,8 @@ const projectName = Object.entries(TENANT_PROJECTS)
 const isRemediated = ["deny", "denied", "client-rst", "server-rst"]
   .includes((caseAnalysis?.detectionResult ?? "").toLowerCase().trim());
 
-const isNoNeedToReport = isRemediated;
+const isMwell = tenantLower.includes("mwell");
+const isNoNeedToReport = isMwell && isRemediated;
 
   return (
     <div style={s.root}>
