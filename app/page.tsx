@@ -880,8 +880,18 @@ function buildAegisPreset(
   vt: VTResult | null,
   verdict?: ScannerVerdict
 ): { caseStatus: CaseStatus; verification: Verification; remediation: Remediation; remarkKey: RemarkKey } {
-  // Scanner verdict takes priority over VT result
-  if (verdict === "false-positive") {
+
+  const isMalicious = vt && !vt.error && vt.malicious > 0;
+
+if (verdict === "false-positive") {
+    if (isMalicious) {
+      return {
+        caseStatus:   "Waiting for Status",
+        verification: "True Positive",
+        remediation:  "Not Remediated",  // ← dito lang binago
+        remarkKey:    "malicious-not-found",  // ← at dito
+      };
+    }
     return {
       caseStatus:   "Resolved",
       verification: "False Positive",
@@ -889,7 +899,9 @@ function buildAegisPreset(
       remarkKey:    "already-blocked",
     };
   }
+
   if (verdict === "true-positive") {
+    // allowed/passed
     return {
       caseStatus:   "Waiting for Status",
       verification: "True Positive",
@@ -897,8 +909,8 @@ function buildAegisPreset(
       remarkKey:    "malicious-not-found",
     };
   }
-  // Fallback: use VT result
-  if (vt && !vt.error && vt.malicious > 0) {
+
+  if (isMalicious) {
     return {
       caseStatus:   "Waiting for Status",
       verification: "True Positive",
@@ -906,6 +918,7 @@ function buildAegisPreset(
       remarkKey:    "malicious-not-found",
     };
   }
+
   return {
     caseStatus:   "Waiting for Status",
     verification: "To Be Confirmed",
