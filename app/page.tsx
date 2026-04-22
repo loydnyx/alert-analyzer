@@ -842,8 +842,6 @@ function analyzeScanner(d: AlertData): CaseAnalysis {
   const displayName      = (d.xdr_event?.display_name ?? d.alert_type ?? "").toLowerCase();
   const isScannerAnomaly = SCANNER_KEYWORDS.some(k => displayName.includes(k));
   const tenant           = d.tenant_name ?? "Unknown Tenant";
-  const tenantLower      = tenant.toLowerCase();
-  const isMwell          = tenantLower.includes("mwell");
   const ip               = d.srcip_host ?? d.host_ip ?? d["IP/name"] ?? d.ip ?? "unknown";
   const ipType           = d.srcip_type ? ` (${d.srcip_type})` : "";
   const ipDetail         = `${ip}${ipType}`;
@@ -854,11 +852,11 @@ function analyzeScanner(d: AlertData): CaseAnalysis {
   let finalStatus: string;
   let verdict: ScannerVerdict;
 
-   if (REMEDIATE_ACTIONS.includes(rawAction) && isMwell) {
+  if (REMEDIATE_ACTIONS.includes(rawAction)) {
     actionTaken = "Remediated";
     finalStatus = "False Positive – Confirmed";
     verdict     = "false-positive";
-  } else if (REMEDIATE_ACTIONS.includes(rawAction) && !isMwell) {
+  } else if (FORWARD_ACTIONS.includes(rawAction)) {
     actionTaken = `Forwarded to ${tenant} for Blocking`;
     finalStatus = "True Positive";
     verdict     = "true-positive";
@@ -1068,9 +1066,10 @@ export default function AlertAnalyzer() {
 
     // Compute analysis synchronously so we can pass verdict to applyPreset
     // without depending on the async state update of setCaseAnalysis
-   const analysis = analyzeScanner(data);
-  const isMwellTenant = (data.tenant_name ?? "").toLowerCase().includes("mwell");
-  setCaseAnalysis(isMwellTenant ? analysis : null);
+    const analysis = analyzeScanner(data);
+    setCaseAnalysis(analysis);
+    setSendTo(data.tenant_name ?? null);
+    setAegisTenant(data.tenant_name ?? "Unknown Tenant");
 
     const alertKey = (data.xdr_event?.display_name ?? data.alert_type ?? "").toLowerCase();
     const ip = alertKey.includes("bad source reputation")
