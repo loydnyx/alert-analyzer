@@ -5,6 +5,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "autoskills": "^0.2.7",
     "next": "^16.2.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"

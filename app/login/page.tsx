@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -11,12 +11,88 @@ export default function LoginPage() {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [returning, setReturning] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const router = useRouter();
 
- useEffect(() => {
+  useEffect(() => {
+    setMounted(true);
     document.title = "Alert Analyzer";
     const saved = localStorage.getItem("soc_user");
     if (saved) { setUser(saved); setReturning(true); }
+  }, []);
+
+  // Particle canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const particles: { x: number; y: number; vx: number; vy: number; size: number; opacity: number; pulse: number }[] = [];
+    for (let i = 0; i < 80; i++) {
+      particles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        size: Math.random() * 1.5 + 0.5,
+        opacity: Math.random() * 0.5 + 0.1,
+        pulse: Math.random() * Math.PI * 2,
+      });
+    }
+
+    let raf: number;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.pulse += 0.02;
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        const op = p.opacity * (0.7 + 0.3 * Math.sin(p.pulse));
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(56,189,248,${op})`;
+        ctx.fill();
+      });
+
+      // Draw lines between close particles
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 100) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(56,189,248,${0.08 * (1 - dist / 100)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
   }, []);
 
   const handleLogin = async () => {
@@ -37,149 +113,172 @@ export default function LoginPage() {
     }
   };
 
-  const floatLabel = (focused: boolean, value: string) =>
-    focused || value.length > 0;
+  const floatLabel = (focused: boolean, value: string) => focused || value.length > 0;
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#03050c", display: "flex",
-      alignItems: "center", justifyContent: "center",
-      fontFamily: "'Share Tech Mono', monospace",
-      backgroundImage: "linear-gradient(rgba(0,255,157,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,157,0.03) 1px, transparent 1px)",
-      backgroundSize: "40px 40px",
+      minHeight: "100vh",
+      background: "#060d1b",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "'Inter', sans-serif",
+      position: "relative" as const,
+      overflow: "hidden",
     }}>
+
+      {/* Particle canvas */}
+      <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }} />
+
+      {/* Grid */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 1, backgroundImage: "linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px)", backgroundSize: "48px 48px", pointerEvents: "none" }} />
+
+      {/* Top glow */}
+      <div style={{ position: "fixed", top: "-10%", left: "50%", transform: "translateX(-50%)", width: 700, height: 400, background: "radial-gradient(ellipse, rgba(56,189,248,0.07) 0%, transparent 70%)", pointerEvents: "none", zIndex: 1 }} />
+
+      {/* Scanning line */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 2, pointerEvents: "none", overflow: "hidden" }}>
+        <div style={{ position: "absolute", left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(56,189,248,0.15), transparent)", animation: "scanLine 6s linear infinite" }} />
+      </div>
+
+      {/* Card */}
       <div style={{
-        background: "rgba(0,12,6,0.95)", border: "1px solid rgba(0,255,157,0.2)",
-        borderLeft: "3px solid #00ff9d", borderRadius: 4, padding: "40px 36px",
-        width: "100%", maxWidth: 400,
-        boxShadow: "0 0 40px rgba(0,255,157,0.05)",
+        position: "relative" as const,
+        zIndex: 10,
+        background: "rgba(10,18,38,0.85)",
+        backdropFilter: "blur(24px)",
+        border: "1px solid rgba(56,189,248,0.12)",
+        borderRadius: 18,
+        padding: "44px 40px",
+        width: "100%",
+        maxWidth: 400,
+        boxShadow: "0 8px 48px rgba(0,0,0,0.6), 0 1px 0 rgba(56,189,248,0.06) inset, 0 0 80px rgba(56,189,248,0.03)",
+        opacity: mounted ? 1 : 0,
+        transform: mounted ? "translateY(0)" : "translateY(24px)",
+        transition: "opacity 0.7s ease, transform 0.7s ease",
       }}>
+
+        {/* Corner accents */}
+        <div style={{ position: "absolute" as const, top: 12, left: 12, width: 16, height: 16, borderTop: "1.5px solid rgba(56,189,248,0.4)", borderLeft: "1.5px solid rgba(56,189,248,0.4)", borderRadius: "2px 0 0 0" }} />
+        <div style={{ position: "absolute" as const, top: 12, right: 12, width: 16, height: 16, borderTop: "1.5px solid rgba(56,189,248,0.4)", borderRight: "1.5px solid rgba(56,189,248,0.4)", borderRadius: "0 2px 0 0" }} />
+        <div style={{ position: "absolute" as const, bottom: 12, left: 12, width: 16, height: 16, borderBottom: "1.5px solid rgba(56,189,248,0.2)", borderLeft: "1.5px solid rgba(56,189,248,0.2)", borderRadius: "0 0 0 2px" }} />
+        <div style={{ position: "absolute" as const, bottom: 12, right: 12, width: 16, height: 16, borderBottom: "1.5px solid rgba(56,189,248,0.2)", borderRight: "1.5px solid rgba(56,189,248,0.2)", borderRadius: "0 0 2px 0" }} />
+
         {/* Header */}
-        <div style={{ marginBottom: 36 }}>
-          <h1 style={{
-            fontFamily: "'Orbitron', monospace", fontSize: 20, fontWeight: 900,
-            color: "#00ff9d", letterSpacing: "0.12em", margin: "0 0 6px",
-            textTransform: "uppercase" as const,
-            textShadow: "0 0 20px rgba(0,255,157,0.4)",
-          }}>Alert Analyzer</h1>
-          <p style={{ fontSize: 10, color: "rgba(0,255,157,0.35)", letterSpacing: "0.2em", margin: 0, textTransform: "uppercase" as const }}>
-            ◈ SOC Operations · Secured Access
-          </p>
+        <div style={{ marginBottom: 36, display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 10 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4, animation: "iconPulse 3s ease-in-out infinite" }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div style={{ textAlign: "center" as const }}>
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", color: "#38bdf8", background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.15)", padding: "3px 12px", borderRadius: 20, marginBottom: 10, display: "inline-block" }}>
+              THREAT INTELLIGENCE CONSOLE
+            </div>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.02em", margin: "0 0 4px" }}>
+              Alert <span style={{ color: "#38bdf8" }}>Analyzer</span>
+            </h1>
+            <p style={{ fontSize: 12, color: "rgba(148,163,184,0.45)", letterSpacing: "0.04em", margin: 0 }}>
+              Stellar Cyber · SOC Operations
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column" as const, gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 20 }}>
 
-          {/* Username field */}
+          {/* Username */}
           {returning ? (
             <div style={{
-              padding: "10px 14px",
-              background: "rgba(0,255,157,0.03)",
-              border: "1px solid rgba(0,255,157,0.08)",
-              borderRadius: 3, color: "rgba(0,255,157,0.5)", fontSize: 13,
+              padding: "12px 16px",
+              background: "rgba(56,189,248,0.04)",
+              border: "1px solid rgba(56,189,248,0.1)",
+              borderRadius: 10, fontSize: 13,
               display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
               <div>
-                <div style={{ fontSize: 9, color: "rgba(0,255,157,0.35)", letterSpacing: "0.18em", textTransform: "uppercase" as const, marginBottom: 2 }}>Username</div>
-                <div>{user}</div>
+                <div style={{ fontSize: 10, color: "rgba(56,189,248,0.5)", letterSpacing: "0.12em", textTransform: "uppercase" as const, marginBottom: 3, fontWeight: 600 }}>Username</div>
+                <div style={{ color: "#f1f5f9", fontWeight: 500 }}>{user}</div>
               </div>
-              <span
-                onClick={() => { setReturning(false); setUser(""); localStorage.removeItem("soc_user"); }}
-                style={{ fontSize: 10, color: "rgba(255,42,74,0.5)", cursor: "pointer" }}
-              >change</span>
+              <span onClick={() => { setReturning(false); setUser(""); localStorage.removeItem("soc_user"); }}
+                style={{ fontSize: 11, color: "rgba(239,68,68,0.6)", cursor: "pointer", fontWeight: 500 }}>
+                change
+              </span>
             </div>
           ) : (
             <div style={{ position: "relative" as const }}>
               <label style={{
-                position: "absolute" as const,
-                left: 14,
+                position: "absolute" as const, left: 14,
                 top: floatLabel(userFocus, user) ? -9 : "50%",
                 transform: floatLabel(userFocus, user) ? "translateY(0)" : "translateY(-50%)",
-                fontSize: floatLabel(userFocus, user) ? 9.5 : 13,
-                color: floatLabel(userFocus, user) ? (userFocus ? "#00ff9d" : "rgba(0,255,157,0.4)") : "rgba(0,255,157,0.25)",
-                letterSpacing: "0.18em",
-                textTransform: "uppercase" as const,
-                transition: "all 0.2s ease",
-                pointerEvents: "none" as const,
-                background: floatLabel(userFocus, user) ? "#03050c" : "transparent",
+                fontSize: floatLabel(userFocus, user) ? 10 : 13,
+                color: floatLabel(userFocus, user) ? (userFocus ? "#38bdf8" : "rgba(56,189,248,0.5)") : "rgba(148,163,184,0.3)",
+                letterSpacing: "0.1em", textTransform: "uppercase" as const, fontWeight: 600,
+                transition: "all 0.2s ease", pointerEvents: "none" as const,
+                background: floatLabel(userFocus, user) ? "#060d1b" : "transparent",
                 padding: floatLabel(userFocus, user) ? "0 4px" : "0",
               }}>Username</label>
               <input
-                type="text"
-                value={user}
+                type="text" value={user}
                 onChange={e => setUser(e.target.value)}
                 onFocus={() => setUserFocus(true)}
                 onBlur={() => setUserFocus(false)}
                 onKeyDown={e => e.key === "Enter" && handleLogin()}
                 autoFocus
                 style={{
-                  width: "100%", padding: "12px 14px",
-                  background: "rgba(0,8,4,0.8)",
-                  borderWidth: "1px",
-                  borderStyle: "solid",
-                  borderColor: error ? "rgba(255,42,74,0.4)" : userFocus ? "rgba(0,255,157,0.4)" : "rgba(0,255,157,0.15)",
-                  borderRadius: 3, color: "#fff", fontSize: 13,
-                  fontFamily: "'Share Tech Mono', monospace", outline: "none",
-                  boxSizing: "border-box" as const,
-                  transition: "border-color 0.2s",
+                  width: "100%", padding: "12px 16px",
+                  background: "rgba(2,8,23,0.6)",
+                  border: `1px solid ${error ? "rgba(239,68,68,0.4)" : userFocus ? "rgba(56,189,248,0.4)" : "rgba(56,189,248,0.1)"}`,
+                  borderRadius: 10, color: "#f1f5f9", fontSize: 14,
+                  fontFamily: "'Inter', sans-serif", outline: "none",
+                  boxSizing: "border-box" as const, transition: "all 0.2s",
                 }}
               />
             </div>
           )}
 
-          {/* Password field */}
+          {/* Password */}
           <div style={{ position: "relative" as const }}>
             <label style={{
-              position: "absolute" as const,
-              left: 14,
+              position: "absolute" as const, left: 14,
               top: floatLabel(passFocus, pass) ? -9 : "50%",
               transform: floatLabel(passFocus, pass) ? "translateY(0)" : "translateY(-50%)",
-              fontSize: floatLabel(passFocus, pass) ? 9.5 : 13,
-              color: floatLabel(passFocus, pass) ? (passFocus ? "#00ff9d" : "rgba(0,255,157,0.4)") : "rgba(0,255,157,0.25)",
-              letterSpacing: "0.18em",
-              textTransform: "uppercase" as const,
-              transition: "all 0.2s ease",
-              pointerEvents: "none" as const,
-              background: floatLabel(passFocus, pass) ? "#03050c" : "transparent",
-              padding: floatLabel(passFocus, pass) ? "0 4px" : "0",
-              zIndex: 1,
+              fontSize: floatLabel(passFocus, pass) ? 10 : 13,
+              color: floatLabel(passFocus, pass) ? (passFocus ? "#38bdf8" : "rgba(56,189,248,0.5)") : "rgba(148,163,184,0.3)",
+              letterSpacing: "0.1em", textTransform: "uppercase" as const, fontWeight: 600,
+              transition: "all 0.2s ease", pointerEvents: "none" as const,
+              background: floatLabel(passFocus, pass) ? "#060d1b" : "transparent",
+              padding: floatLabel(passFocus, pass) ? "0 4px" : "0", zIndex: 1,
             }}>Password</label>
             <input
-              type={showPass ? "text" : "password"}
-              value={pass}
+              type={showPass ? "text" : "password"} value={pass}
               onChange={e => setPass(e.target.value)}
               onFocus={() => setPassFocus(true)}
               onBlur={() => setPassFocus(false)}
               onKeyDown={e => e.key === "Enter" && handleLogin()}
               autoFocus={returning}
               style={{
-                width: "100%", padding: "12px 44px 12px 14px",
-                background: "rgba(0,8,4,0.8)",
-                border: `1px solid ${error ? "rgba(255,42,74,0.4)" : passFocus ? "rgba(0,255,157,0.4)" : "rgba(0,255,157,0.15)"}`,
-                borderRadius: 3, color: "#fff", fontSize: 13,
-                fontFamily: "'Share Tech Mono', monospace", outline: "none",
-                boxSizing: "border-box" as const,
-                transition: "border-color 0.2s",
+                width: "100%", padding: "12px 44px 12px 16px",
+                background: "rgba(2,8,23,0.6)",
+                border: `1px solid ${error ? "rgba(239,68,68,0.4)" : passFocus ? "rgba(56,189,248,0.4)" : "rgba(56,189,248,0.1)"}`,
+                borderRadius: 10, color: "#f1f5f9", fontSize: 14,
+                fontFamily: "'Inter', sans-serif", outline: "none",
+                boxSizing: "border-box" as const, transition: "all 0.2s",
               }}
             />
-            {/* Eye toggle */}
-            <button
-              type="button"
-              onClick={() => setShowPass(v => !v)}
-              style={{
-                position: "absolute" as const, right: 12, top: "50%",
-                transform: "translateY(-50%)",
-                background: "transparent", border: "none", cursor: "pointer",
-                padding: 0, display: "flex", alignItems: "center",
-              }}
-            >
+            <button type="button" onClick={() => setShowPass(v => !v)} style={{
+              position: "absolute" as const, right: 12, top: "50%",
+              transform: "translateY(-50%)", background: "transparent",
+              border: "none", cursor: "pointer", padding: 0,
+              display: "flex", alignItems: "center",
+            }}>
               {showPass ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00ff9d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
                   <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
                   <line x1="1" y1="1" x2="23" y2="23"/>
                 </svg>
               ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00ff9d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                   <circle cx="12" cy="12" r="3"/>
                 </svg>
@@ -188,7 +287,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <p style={{ color: "#ff2a4a", fontSize: 11, letterSpacing: "0.08em", margin: "-10px 0 0" }}>
+            <p style={{ color: "#f87171", fontSize: 12, letterSpacing: "0.04em", margin: "-8px 0 0", fontWeight: 500 }}>
               ✕ Invalid credentials. Access denied.
             </p>
           )}
@@ -197,18 +296,61 @@ export default function LoginPage() {
             onClick={handleLogin}
             disabled={loading}
             style={{
-              width: "100%", padding: "11px 22px", background: "transparent",
-              border: "1px solid rgba(0,255,157,0.4)", borderRadius: 3,
-              color: "#00ff9d", fontSize: 12, fontFamily: "'Share Tech Mono', monospace",
-              letterSpacing: "0.1em", textTransform: "uppercase" as const,
-              cursor: "pointer", boxShadow: "0 0 12px rgba(0,255,157,0.08)",
+              width: "100%", padding: "13px 22px",
+              background: loading ? "rgba(56,189,248,0.05)" : "rgba(56,189,248,0.08)",
+              border: "1px solid rgba(56,189,248,0.35)",
+              borderRadius: 10, color: "#38bdf8", fontSize: 13,
+              fontFamily: "'Inter', sans-serif", fontWeight: 600,
+              letterSpacing: "0.08em", textTransform: "uppercase" as const,
+              cursor: loading ? "not-allowed" : "pointer",
+              transition: "all 0.2s",
+              position: "relative" as const,
+              overflow: "hidden",
             }}
           >
-            {loading ? "Authenticating..." : "[ Access System ]"}
+            {loading ? (
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#38bdf8", display: "inline-block", animation: "blink 1.2s ease-in-out infinite" }} />
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#38bdf8", display: "inline-block", animation: "blink 1.2s ease-in-out infinite 0.2s" }} />
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#38bdf8", display: "inline-block", animation: "blink 1.2s ease-in-out infinite 0.4s" }} />
+              </span>
+            ) : "Access System"}
           </button>
+
+          {/* Status */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", display: "inline-block", animation: "statusPulse 2s ease-in-out infinite" }} />
+            <span style={{ fontSize: 11, color: "rgba(148,163,184,0.35)", letterSpacing: "0.06em" }}>Secure connection established</span>
+          </div>
         </div>
       </div>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Share+Tech+Mono&display=swap');`}</style>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        * { box-sizing: border-box; }
+        input::placeholder { color: transparent; }
+        input:focus { box-shadow: 0 0 0 3px rgba(56,189,248,0.08) !important; }
+        @keyframes scanLine {
+          0% { top: -2px; }
+          100% { top: 100vh; }
+        }
+        @keyframes iconPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,248,0); }
+          50% { box-shadow: 0 0 0 8px rgba(56,189,248,0.06); }
+        }
+        @keyframes statusPulse {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes blink {
+          0%, 80%, 100% { opacity: 0.15; }
+          40% { opacity: 1; }
+        }
+        button:hover:not(:disabled) {
+          background: rgba(56,189,248,0.14) !important;
+          box-shadow: 0 0 24px rgba(56,189,248,0.12) !important;
+        }
+      `}</style>
     </div>
   );
 }
