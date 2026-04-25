@@ -119,17 +119,9 @@ export default function LoginPage() {
   const floatLabel = (focused: boolean, value: string) => focused || value.length > 0;
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      minHeight: "100dvh", // Dynamic viewport height for mobile browsers
+    <div className="login-root" style={{
       background: "#060d1b",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "'Inter', sans-serif",
       position: "relative" as const,
-      overflow: "hidden",
-      padding: "16px",
     }}>
 
       {/* Particle canvas */}
@@ -406,6 +398,19 @@ export default function LoginPage() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; }
+
+        /* min-height with dvh fallback — avoids duplicate TS property error */
+        .login-root {
+          min-height: 100vh;
+          min-height: 100dvh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Inter', sans-serif;
+          position: relative;
+          overflow: hidden;
+          padding: 16px;
+        }
 
         /* Prevent iOS overscroll bounce from showing white */
         html, body { background: #060d1b; overscroll-behavior: none; }
