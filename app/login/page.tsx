@@ -282,7 +282,7 @@ export default function LoginPage() {
 
           {/* Password */}
           <div style={{ position: "relative" as const }}>
-            <label style={{
+            <label htmlFor="password" style={{
               position: "absolute" as const, left: 14,
               top: floatLabel(passFocus, pass) ? -9 : "50%",
               transform: floatLabel(passFocus, pass) ? "translateY(0)" : "translateY(-50%)",
@@ -301,6 +301,8 @@ export default function LoginPage() {
               onKeyDown={e => e.key === "Enter" && handleLogin()}
               autoComplete="current-password"
               autoFocus={returning}
+              placeholder="Password"
+              id="password"
               style={{
                 width: "100%", padding: "14px 48px 14px 16px",
                 background: "rgba(2,8,23,0.6)",
