@@ -264,6 +264,11 @@ function buildFollowUp(d: AlertData): string {
     body = lines(["Source IP", get("srcip", "srcip_host"), "", "Destination IP", get("dstip", "dstip_host"), "", "Action", get("action"), "", "Please verify the source IP if related to your operations, Thank you!"]);
   } else if (alertKey.includes("encrypted phishing")) {
     body = lines(["Source IP", get("srcip", "srcip_host"), "", "Destination IP", get("dstip", "dstip_host"), "", "Destination Host", get("dstip_host", "dstip"), "", "Destination Country", getGeo("dstip"), "", "Please confirm if this activity is expected or legitimate. If not, we recommend blocking the destination host and avoiding access to this site. Thank you."]);
+  } else if (alertKey.includes("possible phishing site visit from email")) {
+    const correlations = obj.correlation_info as Array<Record<string, unknown>> | undefined;
+    const recentDomain = correlations?.find(c => c.query_name === "recent_domain");
+    const srcIp = (recentDomain?.srcip as string) ?? get("srcip_host", "srcip");
+    body = lines(["Source IP of the User", srcIp, "", "Recent Domain ID", get("recent_domain_id"), "","Email Traffic ID", get("email_traffic_id"), "", "Please could you confirm if this site access was expected. Thank you."]);
   } else if (alertKey.includes("external protocol account login failure")) {
     const totalFailed = getNested("event_summary.total_failed") !== "N/A" ? getNested("event_summary.total_failed") : get("num_failed", "actual");
     body = lines(["Source IP", get("srcip", "srcip_host"), "", "Source Host", get("srcip_host"), "", "Source Port", get("srcport"), "", "Destination IP", get("dstip", "dstip_host"), "", "Destination Host", get("dstip_host", "dstip"), "", "Destination Port", get("dstport"), "", `We detected SMB login failures from internal host ${get("srcip_host")} using the account "${get("smb_username", "srcip_username")}" against external IP ${get("dstip", "dstip")}. A total of ${totalFailed} failed attempts were observed with no successful authentication.`, "", "Kindly confirm if this SMB access to an external system is authorized. Thank you."]);
@@ -297,6 +302,14 @@ function buildFollowUp(d: AlertData): string {
     body = lines(["Account Name", get("smb_username", "srcip_username", "account_name"), "", "Total Number Failed", getNested("event_summary.total_failed") !== "N/A" ? getNested("event_summary.total_failed") : get("actual", "num_failed"), "", "Total Number Successful", getNested("event_summary.total_successful") !== "N/A" ? getNested("event_summary.total_successful") : get("num_successful"), "", "Login Type", get("login_type", "proto_name"), "", "Source Host", get("srcip_host"), "", "Source IP", get("srcip_host"), "", "Please confirm whether these SMB login failure attempts were initiated by a legitimate user activity or not. Thank you."]);
   } else if (alertKey.includes("external smb read")) {
     body = lines(["Source IP", get("srcip", "srcip_host"), "", "Destination Host", get("dstip_host", "dstip"), "", "SMB Username", get("smb_username", "srcip_username", "smb_username_count"), "", "Destination Port", get("dstport"), "", "Even though the said destination host is not detected as malicious, the team would like to confirm this just in case. May we confirm if this activity is expected or part of system operations? Thank you."]);
+  } else if (alertKey.includes("external smb write")) {
+    const smbPaths = (() => {
+        const summary = obj.event_summary as Record<string, unknown> | undefined;
+        const paths = summary?.smb_path_list as string[] | undefined;
+        return paths && paths.length > 0 ? paths.join(", ") : "N/A";
+    })();
+    body = lines(["Folders Accessed",  smbPaths, "", "Source IP", get("srcip_host"),"", "Source Host", get("srcip_host"),"", "Source Port", get("srcport"), "", "Destination IP", get("dstip_host", "dstip"), "", "Destination Host", get("dstip_host", "dstip"), "", "Destination Port", get("dstport"),"", "May we confirm if this activity is expected or part of system operations? Thank you." 
+    ]);
   } else if (alertKey.includes("microsoft 365")) {
     const user = get("srcip_username", "username");
     body = lines(["Source", getNested("office365.Source"), "", "Threat Name", getNested("office365.Name"), "", "Severity", getNested("office365.Severity"), "", "Alert Entity List", (() => { const entityList = obj.event_summary as Record<string, unknown> | undefined; const list = entityList?.alert_entity_list as Array<{entity_type: string, alert_entity_id: string}> | undefined; if (list && list.length > 0) { return list.map(e => `EntityType: ${e.entity_type}\nAlertEntityId: ${e.alert_entity_id}`).join("\n"); } return `EntityType: User\nAlertEntityId: ${user}`; })(), "", "User Name", user, "", `We observed that a user (${user}) reported an email message as phishing/malware in Microsoft 365 Security & Compliance. Please confirm whether this activity is legitimate. Thank you!`]);
