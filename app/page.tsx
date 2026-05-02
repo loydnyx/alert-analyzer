@@ -241,8 +241,9 @@ function buildFollowUp(d: AlertData): string {
     const device = obj.device as Record<string, unknown> | undefined;
     const sensorName = (device?.name as string) ?? get("sensor_name", "engid_name");
     body = lines(["Sensor", sensorName, "", "Please confirm if this activity is expected and authorized on your end. Thank you."]);
-  } else if (alertKey.includes("eset protect")) {
-    body = lines(["Host Name", get("device_name", "engid_name"), "", "Source IP", `${get("srcip")} (Malicious)`, "", "Destination IP", get("dstip_hostg", "dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "Please verify if the source IP is related to your operations. If not, we suggest blocking the IP on your end and informing us, as it was flagged as malicious by security vendors."]);
+  } else if (alertKey.includes("eset protect (eset inspect alert)") || alertKey.includes("eset inspect alert")) {
+    body = lines([
+   "Host IP", get("hostip"), "","Hostname", ("host.name"), "", "Process Path", getNested("eset.processname"), "", "User Name", getNested("user.name"), "", "Trigger Event", getNested("eset.trigger_event"), "", "Command Line", getNested("eset.command_line"), "", "Please confirm if this is expected. Thank you." ]);
   } else if (alertKey.includes("exploited c") || alertKey.includes("c&c")) {
     body = lines(["Source IP", `${get("srcip")} (Malicious)`, "", "Source Host", get("srcip_host"), "", "Source Port", get("srcport"), "", "Destination IP", get("dstip_host", "dstip"), "", "Destination Host", get("dstip_host", "dstip"), "", "Destination Port", get("dstport"), "", "Please confirm if this communication is expected and authorized for your systems. Thank you."]);
   } else if (alertKey.includes("external account login failure")) {
@@ -369,6 +370,16 @@ function buildFollowUp(d: AlertData): string {
     body = lines(["Source IP", `${get("srcip", "srcip_host", "host_ip", "IP/name", "ip")} (Malicious)`, "", "Source Country", getGeo("srcip"), "", "Event Source", get("event_source"), "", "action", get("action"), "", "Please verify the source IP if related to your operations, as it was flagged malicious by security vendors. Thank you!"]);
   } else if (alertKey.includes("sensitive windows active directory") || alertKey.includes("active directory attribute")) {
     body = lines(["Host IP", get("srcip_host"), "", "Host Name", get("engid_name", "device_name"), "", "Event Outcome", get("event_outcome", "state"), "", "Please confirm whether this Active Directory attribute modification was an authorized and expected activity. Thank you."]);
+  } else if (alertKey.includes("potentially malicious windows event")) {
+  body = lines(["Host IP", get("hostip", "srcip"), "", "Host Name", get("engid_name", "computer_name"), "", "Subject Username", getNested("event_data.SubjectUserName"), "", "Event ID", get("event_id"), "", "Host Country", getGeo("hostip"), "", "Please confirm if this activity is expected and authorized. Thank you."]);
+  } else if (alertKey.includes("account creation anomaly")) {
+    const newUsers = (() => {
+        const summary = obj.event_summary as Record<string, unknown> | undefined;
+        const creation = summary?.account_creation as Record<string, unknown> | undefined;
+        const users = creation?.new_users_summary as string[] | undefined;
+        return users && users.length > 0 ? users.join(", ") : getNested("event_data.TargetUserName");
+    })();
+    body = lines(["Source User ID", get("srcip_usersid"),"","Source Username", get("srcip_username"),"", "Summary of New Usernames", newUsers,"", "Please confirm if this account creation is expected or part of any recent onboarding or administrative activity from your end. Thank you."]);
   } else if (alertKey.includes("sensor status")) {
     const EXPECTED_AFTER_HOURS: Record<string, number> = { "belmont": 17, "siycha": 21 };
     const NOT_EXPECTED_SENSORS = ["modular", "stellarmodularsensor", "awsmds", "mds"];
@@ -407,6 +418,9 @@ function buildFollowUp(d: AlertData): string {
     body = lines(["Source Host", get("srcip_host"), "", "Target Username", get("smb_username", "srcip_username", "target_username"), "", "Event Data Servicename", getNested("event_data.ServiceName"), "", "Child Count", get("child_count"), "", "We observed an unusual asset access activity. Can you confirm this activity is expected and authorized?"]);
   } else if (alertKey.includes("user login location")) {
     body = lines(["Source Username", get("srcip_username"), "", "Source IP", get("srcip_host"), "", "Source Country", getGeo("srcip"), "", "Login Result", get("login_result", "action"), "", "Please confirm if this login from an unusual location is expected and authorized. Thank you."]);
+  } else if (alertKey.includes("abnormal parent") || alertKey.includes("parent / child") || alertKey.includes("parent child")) {
+    body = lines([
+    "Process Name", get("process_name", "program_name"), "", "Parent Process Name", get("parent_proc_name"), "", "Host IP", get("hostip", "srcip"), "", "Hostname", get("engid_name", "computer_name", "srcip_host"), "","Kindly confirm if this activity is expected or part of normal operations. Thank you!"]);
   } else if (alertKey.includes("long app session")) {
     body = lines(["Source IP", get("srcip"), "", "Destination IP", get("dstip"), "", "Source Port", get("srcport"), "", "Destination Port", get("dstport"), "", "App", get("appid_name", "proto_name"), "", "Please confirm if this activity is done in your end, thank you"]);
   } else {
